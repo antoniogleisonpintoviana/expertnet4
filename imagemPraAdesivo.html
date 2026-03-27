@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Gerador de Impressão A4</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+text-align:center;
+padding:20px;
+}
+
+.container{
+background:white;
+padding:25px;
+border-radius:10px;
+max-width:950px;
+margin:auto;
+box-shadow:0 0 15px rgba(0,0,0,0.2);
+}
+
+h2{
+margin-top:0;
+}
+
+input,select{
+padding:8px;
+margin:5px;
+width:120px;
+}
+
+button{
+padding:10px 15px;
+margin:10px;
+cursor:pointer;
+border:none;
+background:#2d89ef;
+color:white;
+border-radius:5px;
+}
+
+button:hover{
+background:#1b5fa7;
+}
+
+#resultado{
+font-size:18px;
+margin-top:15px;
+background:#f7f7f7;
+padding:10px;
+border-radius:5px;
+}
+
+#pagina{
+margin-top:25px;
+background:white;
+border:2px solid #333;
+position:relative;
+margin-left:auto;
+margin-right:auto;
+}
+
+.imgItem{
+position:absolute;
+overflow:hidden;
+border:1px dashed #777;
+}
+
+.imgItem img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Gerador de Impressão A4</h2>
+
+<div>
+
+<label>Largura (cm)</label><br>
+<input type="number" id="largura" step="0.1">
+
+<label>Altura (cm)</label><br>
+<input type="number" id="altura" step="0.1">
+
+<label>Margem corte (cm)</label><br>
+<input type="number" id="margem" step="0.1" value="0.2">
+
+</div>
+
+<div>
+
+<label>Orientação</label><br>
+
+<select id="orientacao">
+<option value="retrato">Retrato</option>
+<option value="paisagem">Paisagem</option>
+</select>
+
+</div>
+
+<div>
+
+<input type="file" id="upload">
+
+</div>
+
+<button onclick="calcular()">Gerar Layout</button>
+
+<button onclick="gerarPDF()">Baixar PDF</button>
+
+<button> Limpar</button>
+
+<div id="resultado"></div>
+
+<div id="pagina"></div>
+
+</div>
+
+<script>
+
+let imagemBase64=""
+
+document.getElementById("upload").addEventListener("change",function(e){
+
+let reader=new FileReader()
+
+reader.onload=function(evt){
+imagemBase64=evt.target.result
+}
+
+reader.readAsDataURL(e.target.files[0])
+
+})
+
+
+function calcular(){
+
+let largura=parseFloat(document.getElementById("largura").value)
+let altura=parseFloat(document.getElementById("altura").value)
+let margem=parseFloat(document.getElementById("margem").value)
+
+if(!largura || !altura){
+
+alert("Preencha largura e altura")
+return
+
+}
+
+let orientacao=document.getElementById("orientacao").value
+
+let pageW=21
+let pageH=29.7
+
+if(orientacao=="paisagem"){
+
+pageW=29.7
+pageH=21
+
+}
+
+let larguraTotal=largura+(margem*2)
+let alturaTotal=altura+(margem*2)
+
+let porLinha=Math.floor(pageW/larguraTotal)
+let porColuna=Math.floor(pageH/alturaTotal)
+
+let total=porLinha*porColuna
+
+let larguraUsada=porLinha*larguraTotal
+let alturaUsada=porColuna*alturaTotal
+
+document.getElementById("resultado").innerHTML=
+
+"Imagens por linha: <b>"+porLinha+"</b><br>"+
+"Imagens por coluna: <b>"+porColuna+"</b><br>"+
+"<p style='color:red'>Total por página: <b>" + total + "</b></p><br><br>"
+"Tamanho usado: "+larguraUsada.toFixed(2)+"cm x "+alturaUsada.toFixed(2)+"cm"
+
+desenharPagina(porLinha,porColuna,largura,altura,margem,pageW,pageH)
+
+}
+
+
+
+function desenharPagina(col,lin,largura,altura,margem,pageW,pageH){
+
+let pagina=document.getElementById("pagina")
+
+let escala=25
+
+pagina.style.width=(pageW*escala)+"px"
+pagina.style.height=(pageH*escala)+"px"
+
+pagina.innerHTML=""
+
+let larguraTotal=largura+(margem*2)
+let alturaTotal=altura+(margem*2)
+
+let larguraLayout=col*larguraTotal
+let alturaLayout=lin*alturaTotal
+
+let offsetX=(pageW-larguraLayout)/2
+let offsetY=(pageH-alturaLayout)/2
+
+for(let y=0;y<lin;y++){
+
+for(let x=0;x<col;x++){
+
+let div=document.createElement("div")
+
+div.className="imgItem"
+
+div.style.left=((x*larguraTotal+offsetX)*escala)+"px"
+div.style.top=((y*alturaTotal+offsetY)*escala)+"px"
+
+div.style.width=(largura*escala)+"px"
+div.style.height=(altura*escala)+"px"
+
+if(imagemBase64!=""){
+
+let img=document.createElement("img")
+img.src=imagemBase64
+div.appendChild(img)
+
+}
+
+pagina.appendChild(div)
+
+}
+
+}
+
+}
+
+
+
+async function gerarPDF(){
+
+let largura=parseFloat(document.getElementById("largura").value)
+let altura=parseFloat(document.getElementById("altura").value)
+let margem=parseFloat(document.getElementById("margem").value)
+let orientacao=document.getElementById("orientacao").value
+
+let pageW=21
+let pageH=29.7
+let orientation="p"
+
+if(orientacao=="paisagem"){
+
+pageW=29.7
+pageH=21
+orientation="l"
+
+}
+
+let larguraTotal=largura+(margem*2)
+let alturaTotal=altura+(margem*2)
+
+let porLinha=Math.floor(pageW/larguraTotal)
+let porColuna=Math.floor(pageH/alturaTotal)
+
+const {jsPDF}=window.jspdf
+
+let pdf=new jsPDF({
+orientation:orientation,
+unit:"cm",
+format:"a4"
+})
+
+let larguraLayout=porLinha*larguraTotal
+let alturaLayout=porColuna*alturaTotal
+
+let offsetX=(pageW-larguraLayout)/2
+let offsetY=(pageH-alturaLayout)/2
+
+for(let y=0;y<porColuna;y++){
+
+for(let x=0;x<porLinha;x++){
+
+let posX=x*larguraTotal+margem+offsetX
+let posY=y*alturaTotal+margem+offsetY
+
+if(imagemBase64!=""){
+
+pdf.addImage(
+imagemBase64,
+"PNG",
+posX,
+posY,
+largura,
+altura
+)
+
+}
+
+}
+
+}
+
+pdf.save("folha-a4.pdf")
+
+}
+
+</script>
+<a href="index.html">Voltar</a>
+</body>
+</html>
+</html>
