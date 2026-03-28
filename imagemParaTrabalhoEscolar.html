@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Layout A4 com Corte</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:#f2f2f2;
+text-align:center;
+padding:20px;
+}
+
+.container{
+background:white;
+padding:25px;
+border-radius:10px;
+max-width:950px;
+margin:auto;
+box-shadow:0 0 15px rgba(0,0,0,0.2);
+}
+
+button{
+padding:10px 15px;
+margin:10px;
+cursor:pointer;
+border:none;
+background:#2d89ef;
+color:white;
+border-radius:5px;
+}
+
+#pagina{
+margin-top:25px;
+background:white;
+border:2px solid #333;
+position:relative;
+margin:auto;
+}
+
+.imgItem{
+position:absolute;
+border:1px dashed #777;
+overflow:hidden;
+cursor:pointer;
+}
+
+.imgItem.selected{
+border:2px solid red;
+}
+
+.imgItem img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+.selectImg{
+position:absolute;
+bottom:0;
+left:0;
+width:100%;
+font-size:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Layout A4 com Corte</h2>
+
+<label>Quantidade por página</label><br>
+
+<select id="modo">
+<option value="1">1 imagem</option>
+<option value="2">2 imagens</option>
+<option value="4">4 imagens</option>
+<option value="9">9 imagens</option>
+</select>
+
+<br>
+
+<input type="file" id="upload" multiple>
+
+<br>
+
+<button onclick="gerarLayout()">Gerar Layout</button>
+<button onclick="abrirCrop()">Cortar Imagem</button>
+<button onclick="gerarPDF()">Baixar PDF</button>
+
+<div id="pagina"></div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modalCrop" style="display:none; position:fixed; inset:0; background:#000000cc; justify-content:center; align-items:center;">
+<div style="background:white;padding:20px">
+<img id="imagemCrop" style="max-width:400px">
+<br><br>
+<button onclick="aplicarCrop()">Aplicar</button>
+<button onclick="fecharCrop()">Cancelar</button>
+</div>
+</div>
+
+<script>
+
+let imagensBase64 = []
+let selecionado = null
+let cropper = null
+
+document.getElementById("upload").addEventListener("change", function(e){
+
+imagensBase64 = []
+
+let arquivos = e.target.files
+
+for(let i=0;i<arquivos.length;i++){
+
+let reader = new FileReader()
+
+reader.onload = function(evt){
+imagensBase64.push(evt.target.result)
+}
+
+reader.readAsDataURL(arquivos[i])
+
+}
+
+})
+
+function gerarLayout(){
+
+let modo = parseInt(document.getElementById("modo").value)
+
+let pageW = 21
+let pageH = 29.7
+let margem = 0.2
+
+let col, lin
+
+if(modo == 1){ col=1; lin=1 }
+if(modo == 2){ col=1; lin=2 }
+if(modo == 4){ col=2; lin=2 }
+if(modo == 9){ col=3; lin=3 }
+
+let largura = (pageW/col) - (margem*2)
+let altura = (pageH/lin) - (margem*2)
+
+let pagina = document.getElementById("pagina")
+let escala = 25
+
+pagina.style.width = (pageW*escala)+"px"
+pagina.style.height = (pageH*escala)+"px"
+pagina.innerHTML = ""
+
+let index = 0
+
+for(let y=0;y<lin;y++){
+for(let x=0;x<col;x++){
+
+let div = document.createElement("div")
+div.className="imgItem"
+
+div.style.left = ((x*(largura+(margem*2)))*escala)+"px"
+div.style.top = ((y*(altura+(margem*2)))*escala)+"px"
+div.style.width = (largura*escala)+"px"
+div.style.height = (altura*escala)+"px"
+
+// imagem
+let img = document.createElement("img")
+div.appendChild(img)
+
+// selecionar quadro
+div.onclick = function(){
+document.querySelectorAll(".imgItem").forEach(d=>d.classList.remove("selected"))
+div.classList.add("selected")
+selecionado = img
+}
+
+// select imagem
+let select = document.createElement("select")
+select.className = "selectImg"
+
+for(let i=0;i<imagensBase64.length;i++){
+let option = document.createElement("option")
+option.value = i
+option.text = "Imagem "+(i+1)
+select.appendChild(option)
+}
+
+select.onchange = function(){
+img.src = imagensBase64[this.value]
+}
+
+if(imagensBase64.length > 0){
+img.src = imagensBase64[index % imagensBase64.length]
+}
+
+div.appendChild(select)
+
+pagina.appendChild(div)
+
+index++
+
+}
+}
+
+}
+
+// CROP
+function abrirCrop(){
+
+if(!selecionado){
+alert("Clique em um quadro primeiro")
+return
+}
+
+let modal = document.getElementById("modalCrop")
+let imgCrop = document.getElementById("imagemCrop")
+
+imgCrop.src = selecionado.src
+
+modal.style.display = "flex"
+
+cropper = new Cropper(imgCrop,{
+aspectRatio: 3/4,
+viewMode:1
+})
+
+}
+
+function aplicarCrop(){
+
+let canvas = cropper.getCroppedCanvas()
+selecionado.src = canvas.toDataURL("image/png")
+
+cropper.destroy()
+fecharCrop()
+
+}
+
+function fecharCrop(){
+document.getElementById("modalCrop").style.display="none"
+}
+
+// PDF
+function gerarPDF(){
+
+let modo = parseInt(document.getElementById("modo").value)
+
+let pageW = 21
+let pageH = 29.7
+let margem = 0.2
+
+let col, lin
+
+if(modo == 1){ col=1; lin=1 }
+if(modo == 2){ col=1; lin=2 }
+if(modo == 4){ col=2; lin=2 }
+if(modo == 9){ col=3; lin=3 }
+
+let largura = (pageW/col) - (margem*2)
+let altura = (pageH/lin) - (margem*2)
+
+const {jsPDF}=window.jspdf
+
+let pdf = new jsPDF({
+orientation:"p",
+unit:"cm",
+format:"a4"
+})
+
+let elementos = document.querySelectorAll(".imgItem img")
+
+let index = 0
+
+for(let y=0;y<lin;y++){
+for(let x=0;x<col;x++){
+
+let posX = x*(largura+(margem*2)) + margem
+let posY = y*(altura+(margem*2)) + margem
+
+let img = elementos[index]
+
+if(img && img.src){
+
+pdf.addImage(img.src,"PNG",posX,posY,largura,altura)
+
+}
+
+index++
+
+}
+}
+
+pdf.save("layout-a4.pdf")
+
+}
+
+</script>
+<a href="index.html">Voltar</a>
+
+</body>
+</html>
