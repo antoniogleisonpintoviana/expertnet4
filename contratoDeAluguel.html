@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Gerador de Contrato de Locação</title>
+
+<style>
+
+@media print {
+
+    /* esconde TUDO */
+    body * {
+        visibility: hidden;
+    }
+
+    /* mostra só o contrato */
+    #contratoGerado, #contratoGerado * {
+        visibility: visible;
+    }
+
+    /* posiciona no topo da página */
+    #contratoGerado {
+        position: absolute;
+        top: 0;
+        left: 0;
+		
+        width: 21cm;
+        font-family: 'Times New Roman';
+        font-size: 14pt;
+    }
+
+    /* tamanho A4 */
+    @page {
+        size: A4;
+        margin: 2cm;
+    }
+}
+body{
+    font-family: Arial;
+    background:#f4f4f4;
+    padding:20px;
+}
+.container{
+    max-width:900px;
+    margin:auto;
+    background:white;
+    padding:30px;
+    border-radius:8px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+h1{
+    text-align:center;
+    margin-bottom:30px;
+}
+input{
+    width:100%;
+    padding:8px;
+    margin-bottom:10px;
+}
+button{
+    padding:12px 20px;
+    background:#0566B1;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-size:16px;
+}
+button:hover{
+    background:#02376E;
+}
+#contratoGerado{
+    margin-top:20px;
+    background:#fff;
+    padding:20px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    max-width:900px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>Gerador de Contrato de Locação</h1>
+
+<h3>Dados do Locador</h3>
+<input id="locadorNome" placeholder="Nome do Locador" style="font-family: 'Times New Roman'; font-weight: bold; text-transform: uppercase; font-size: 14px;">
+<input id="locadorEstadoCivil" placeholder="Estado Civil" style="font-family: 'Times New Roman'; font-weight: bold; text-transform: uppercase; font-size: 14px;">
+<input id="locadorProfissao" placeholder="Profissão" style="font-family: 'Times New Roman'; font-weight: bold; text-transform: uppercase; font-size: 14px;">
+<input id="locadorRG" type="text" placeholder="RG" maxlength="14" oninput="this.value=this.value.replace(/\D/g,'')" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="locadorCPF" type="text" placeholder="CPF" maxlength="14" oninput="formatCPF(this)" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="locadorEndereco" placeholder="Endereço completo" style="font-family:'Times New Roman'; font-size:14px; text-transform:uppercase; font-weight:normal;">
+
+<h3>Dados do Locatário</h3>
+<input id="locatarioNome" placeholder="Nome completo do locatário" style="font-family: 'Times New Roman'; font-size:14px; text-transform:uppercase; font-weight:normal;">
+<input id="locatarioEstadoCivil" placeholder="Estado civil (ex: solteiro, casado)" style="font-family:'Times New Roman'; font-size:14px; text-transform:uppercase; font-weight:normal;">
+<input id="locatarioProfissao" placeholder="Profissão" style="font-family:'Times New Roman'; font-size:14px; text-transform:uppercase; font-weight:normal;">
+<input id="locatarioRG" placeholder="RG (ex: 2000000000)" maxlength="14" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="locatarioCPF" placeholder="CPF (ex: 000.000.000-00)" maxlength="14" oninput="formatCPF(this)" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+
+<h3>Dados do Imóvel</h3>
+<input id="enderecoImovel" placeholder="Endereço do imóvel" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="numeroImovel" placeholder="Número" type="number" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="cidadeImovel" placeholder="Cidade" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="cepImovel" placeholder="CEP" maxlength="9">
+
+<h3>Dados do Contrato</h3>
+<input id="prazo" placeholder="Prazo do contrato (em meses, ex: 12)" type="number" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="inicio" placeholder="Início do contrato (dd/mm/aaaa)" type="date" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="fim" placeholder="Fim do contrato (dd/mm/aaaa)" type="date" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="valorAluguel" placeholder="Valor mensal do aluguel (R$)" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+<input id="diaPagamento" placeholder="Dia do pagamento mensal (ex: 05)" type="number" min="1" max="31" style="font-family:'Times New Roman'; font-weight:bold; text-transform:uppercase; font-size:14px;">
+
+<br><br>
+<button onclick="gerarContrato()">Gerar Contrato</button>
+
+<div id="contratoGerado"></div>
+
+<script>
+// Formata CPF
+function formatCPF(input) {
+    let value = input.value.replace(/\D/g, '');
+    if(value.length>11) value=value.slice(0,11);
+    value=value.replace(/(\d{3})(\d)/,'$1.$2');
+    value=value.replace(/(\d{3})(\d)/,'$1.$2');
+    value=value.replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+    input.value=value;
+}
+
+// Formata CEP
+document.getElementById('cepImovel').addEventListener('input', function(e){
+    let value = e.target.value.replace(/\D/g,'');
+    if(value.length>5) value=value.slice(0,5)+'-'+value.slice(5,8);
+    e.target.value=value;
+});
+
+// Formata valor do aluguel
+document.getElementById('valorAluguel').addEventListener('input', function(e){
+    let value = e.target.value.replace(/\D/g,'');
+    value=(value/100).toFixed(2)+'';
+    value=value.replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    e.target.value='R$ '+value;
+});
+
+// Função principal
+function gerarContrato(){
+    const locadorNome=document.getElementById('locadorNome').value.toUpperCase();
+    const locadorEstadoCivil=document.getElementById('locadorEstadoCivil').value.toUpperCase();
+    const locadorProfissao=document.getElementById('locadorProfissao').value.toUpperCase();
+    const locadorRG=document.getElementById('locadorRG').value.toUpperCase();
+    const locadorCPF=document.getElementById('locadorCPF').value.toUpperCase();
+    const locadorEndereco=document.getElementById('locadorEndereco').value.toUpperCase();
+
+    const locatarioNome=document.getElementById('locatarioNome').value.toUpperCase();
+    const locatarioEstadoCivil=document.getElementById('locatarioEstadoCivil').value.toUpperCase();
+    const locatarioProfissao=document.getElementById('locatarioProfissao').value.toUpperCase();
+    const locatarioRG=document.getElementById('locatarioRG').value.toUpperCase();
+    const locatarioCPF=document.getElementById('locatarioCPF').value.toUpperCase();
+
+    const enderecoImovel=document.getElementById('enderecoImovel').value.toUpperCase();
+    const numeroImovel=document.getElementById('numeroImovel').value.toUpperCase();
+    const cidadeImovel=document.getElementById('cidadeImovel').value.toUpperCase();
+    const cepImovel=document.getElementById('cepImovel').value.toUpperCase();
+
+    const prazo=document.getElementById('prazo').value.toUpperCase();
+    const inicio=document.getElementById('inicio').value.toUpperCase();
+    const fim=document.getElementById('fim').value;
+    const valorAluguel=document.getElementById('valorAluguel').value.toUpperCase();
+    const diaPagamento=document.getElementById('diaPagamento').value.toUpperCase();
+
+    // Contrato completo interpolado
+    const dataAtual = `Fortaleza, ${new Date().toLocaleDateString('pt-BR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric'
+})}`;
+	
+	const contrato=`
+<p style="font-family: 'Times New Roman'; font-size: 14pt; width: 21cm; margin:auto;">CONTRATO DE LOCAÇÃO RESIDENCIAL</p><br>
+
+<p>✔ De um lado denominado LOCADOR Sr(a). ${locadorNome}, CPF: ${locadorCPF}, RG: ${locadorRG}, brasileiro, ${locadorEstadoCivil}, ${locadorProfissao}, residente a ${locadorEndereco}.</p>
+
+<p>✔ De outro lado denominado LOCATÁRIO Sr(a). ${locatarioNome}, ${locatarioEstadoCivil}, ${locatarioProfissao}, RG: ${locatarioRG} - SSP-CE, CPF: ${locatarioCPF}.</p>
+
+<p>1) O imóvel situado ${enderecoImovel}, nº ${numeroImovel}, ${cidadeImovel}, CEP: ${cepImovel}.</p>
+<p>2) A locação destina-se ao uso exclusivo como residência do LOCATÁRIO.</p>
+<p>3) O prazo de locação é de ${prazo} meses, iniciando-se em ${inicio} e terminando em ${fim}.</p>
+<p>4) O aluguel mensal será de ${valorAluguel} e deverá ser pago todo dia ${diaPagamento}.</p>
+<p>4.1) A impontualidade acarretará juros moratórios na base de 10% ao mês...</p>
+<p>4.2) O pagamento de qualquer dos aluguéis não implica renúncia de direitos...</p>
+<p>5) O aluguel será reajustado anualmente pela variação do IPCA (IBGE)...</p>
+<p>6) Havendo prorrogação tácita ou expressa do presente contrato o mesmo será reajustado a preço de mercado...</p>
+<p>7) Nas cobranças judiciais e extrajudiciais de aluguéis em atraso serão acrescidos juros, atualização e honorários...</p>
+<p>8) O imóvel da presente locação destina-se ao uso exclusivo como RESIDENCIAL do LOCATÁRIO...</p>
+<p>9) Além do aluguel são de responsabilidade do LOCATÁRIO as despesas com água, luz, condomínio, etc...</p>
+<p>10) O LOCATÁRIO declara que tomará conhecimento das regras do condomínio...</p>
+<p>11) Encerrada a locação, a entrega das chaves só será processada mediante comprovantes...</p>
+<p>12) Fica facultado ao LOCADOR vistoriar o imóvel sempre que necessário.</p>
+<p>13) O LOCATÁRIO obriga-se a comunicar antecipadamente a devolução do imóvel...</p>
+<p>14) O LOCATÁRIO compromete-se a solicitar vistoria antes de desocupar o imóvel...</p>
+<p>15) Modificações no imóvel só podem ser feitas com autorização do LOCADOR...</p>
+<p>16) Danos, incêndio, desapropriação ou falência do LOCATÁRIO rescindem o contrato...</p>
+<p>17) O LOCATÁRIO autoriza notificações legais via correspondência ou meios previstos em lei...</p>
+<p>18) Penalidades por infrações contratuais equivalem a 1x o valor do aluguel...</p>
+<p>18.1) Multa proporcional se devolver o imóvel antes do prazo ajustado...</p>
+<p>19) Qualquer tolerância não implica renúncia de direitos do LOCADOR...</p>
+<p>20) Permanecendo no imóvel após o prazo, o LOCATÁRIO pagará aluguel proporcional...</p>
+<p>21) Em caso de venda, o LOCATÁRIO renuncia ao direito de preferência e autoriza visitas...</p>
+<p>22) O LOCATÁRIO declara que recebe o imóvel em boas condições...</p>
+<p>23) Assina o contrato e assume responsabilidades solidárias, inclusive fiadores...</p>
+
+
+<br><br>
+<p style="text-align:right;">${dataAtual}</p>
+
+<br><br>
+<p>___________________________________________<br>${locadorNome} (Locador)</p>
+<p>___________________________________________<br>${locatarioNome} (Locatário)</p>
+`;
+
+document.getElementById('contratoGerado').innerHTML = contrato;
+
+
+}
+
+
+function imprimirContrato() {
+
+  
+
+    const conteudo = document.getElementById('contratoGerado').innerHTML;
+    const janela = window.open('', '', 'width=800,height=600');
+    janela.document.write(`
+        <html>
+            <head>
+                <title>Contrato</title>
+                <style>
+                    body { font-family: 'Times New Roman'; font-size: 14pt; margin: 2cm; }
+                </style>
+            </head>
+            <body>
+                ${conteudo}
+				
+            </body>
+        </html>
+    `);
+    janela.document.close();
+    janela.focus();
+    janela.print();
+    janela.close();
+	
+	
+	
+}
+
+
+
+</script>
+
+<button onclick="window.print()">Imprimir contrato</button>
+</div>
+
+
+</body>
+</html>
