@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+<meta charset="UTF-8">
+<title>Placas PIX (4 por folha)</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f2f2;
+text-align:center;
+padding:20px;
+}
+
+.container{
+background:white;
+padding:25px;
+border-radius:10px;
+max-width:900px;
+margin:auto;
+box-shadow:0 0 15px rgba(0,0,0,0.2);
+}
+
+input,select{
+padding:8px;
+margin:5px;
+width:250px;
+}
+
+button{
+padding:10px 15px;
+margin:10px;
+border:none;
+background:#0a8f5a;
+color:white;
+border-radius:5px;
+cursor:pointer;
+}
+
+#pagina{
+margin-top:20px;
+background:white;
+border:2px solid #333;
+position:relative;
+margin:auto;
+}
+
+.item{
+position:absolute;
+border:1px dashed #777;
+text-align:center;
+overflow:hidden;
+}
+
+.qr{
+width:100%;
+height:70%;
+}
+
+.qr img{
+width:100%;
+height:100%;
+object-fit:contain;
+}
+
+.texto{
+height:30%;
+display:flex;
+flex-direction:column;
+justify-content:center;
+font-size:12px;
+padding:5px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Placas PIX (4 por folha)</h2>
+
+<select id="tipo">
+<option value="telefone">Telefone</option>
+<option value="cpf">CPF</option>
+<option value="email">Email</option>
+</select><br>
+
+<input id="chave" placeholder="Digite a chave PIX"><br>
+<input id="nome" placeholder="Nome do titular"><br>
+
+<input type="file" id="uploadQR" accept="image/*"><br>
+
+<button onclick="gerar()">Gerar</button>
+<button onclick="gerarPDF()">Baixar PDF</button>
+
+<div id="pagina"></div>
+
+</div>
+
+<script>
+
+let qrBase64 = ""
+
+document.getElementById("uploadQR").addEventListener("change", function(e){
+
+let file = e.target.files[0]
+if(!file) return
+
+let reader = new FileReader()
+
+reader.onload = function(evt){
+qrBase64 = evt.target.result
+}
+
+reader.readAsDataURL(file)
+
+})
+
+function validar(){
+
+let tipo = document.getElementById("tipo").value
+let chave = document.getElementById("chave").value.trim()
+
+if(tipo == "telefone"){
+return /^\(?\d{2}\)?\s?\d{9}$/.test(chave)
+}
+
+if(tipo == "cpf"){
+return /^\d{11}$/.test(chave)
+}
+
+if(tipo == "email"){
+return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(chave)
+}
+
+return false
+
+}
+
+function formatarChave(tipo, chave){
+
+if(tipo == "cpf"){
+return "CHAVE: " + chave.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+}
+
+return "CHAVE: " + chave
+
+}
+
+function gerar(){
+
+if(!validar()){
+alert("Chave inválida")
+return
+}
+
+if(qrBase64 == ""){
+alert("Envie a imagem do QR Code")
+return
+}
+
+desenhar()
+
+}
+
+function desenhar(){
+
+let pagina = document.getElementById("pagina")
+
+let escala = 25
+
+let pageW = 21
+let pageH = 29.7
+
+pagina.style.width = (pageW*escala)+"px"
+pagina.style.height = (pageH*escala)+"px"
+
+pagina.innerHTML = ""
+
+let largura = 6.5
+let altura = 10
+
+let margemX = (pageW - (largura*2)) / 3
+let margemY = (pageH - (altura*2)) / 3
+
+for(let y=0;y<2;y++){
+for(let x=0;x<2;x++){
+
+let item = document.createElement("div")
+item.className = "item"
+
+item.style.left = ((margemX + x*(largura+margemX))*escala)+"px"
+item.style.top = ((margemY + y*(altura+margemY))*escala)+"px"
+item.style.width = (largura*escala)+"px"
+item.style.height = (altura*escala)+"px"
+
+let qrDiv = document.createElement("div")
+qrDiv.className = "qr"
+
+let img = document.createElement("img")
+img.src = qrBase64
+
+qrDiv.appendChild(img)
+
+let texto = document.createElement("div")
+texto.className = "texto"
+
+let chave = document.getElementById("chave").value
+let nome = document.getElementById("nome").value
+let tipo = document.getElementById("tipo").value
+
+texto.innerHTML =
+formatarChave(tipo, chave) +
+"<br>" +
+nome
+
+item.appendChild(qrDiv)
+item.appendChild(texto)
+
+pagina.appendChild(item)
+
+}
+}
+
+}
+
+async function gerarPDF(){
+
+const {jsPDF} = window.jspdf
+
+let pdf = new jsPDF({
+unit:"cm",
+format:"a4"
+})
+
+let largura = 6.5
+let altura = 10
+
+let pageW = 21
+let pageH = 29.7
+
+let margemX = (pageW - (largura*2)) / 3
+let margemY = (pageH - (altura*2)) / 3
+
+let chave = document.getElementById("chave").value
+let nome = document.getElementById("nome").value
+let tipo = document.getElementById("tipo").value
+
+for(let y=0;y<2;y++){
+for(let x=0;x<2;x++){
+
+let posX = margemX + x*(largura+margemX)
+let posY = margemY + y*(altura+margemY)
+
+pdf.addImage(qrBase64,"PNG",posX,posY,largura,7)
+
+pdf.setFontSize(14)
+
+pdf.text(
+formatarChave(tipo, chave),
+posX,
+posY+7.8
+)
+
+pdf.text(
+nome,
+posX,
+posY+8.8
+)
+
+}
+}
+
+pdf.save("placas-pix.pdf")
+
+}
+
+</script>
+
+</body>
+</html>
