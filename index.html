@@ -40,6 +40,31 @@
 <h1>Enel</h1>
 <h1><a href="https://www.eneldistribuicao.com.br/ce/AcessoRapidoSegundaVia.aspx">2ª Via enel</a></h1>
 
+    <h1>Sap Agendamento</h1>
+<h1>
+  <a href="https://visita.sap.ce.gov.br/visita/" id="linkSap">
+    Sap Senhas
+  </a>
+</h1>
+
+<script>
+document.addEventListener("keydown", function(event) {
+    // evita ativar se estiver digitando em input
+    if (document.activeElement.tagName === "INPUT") return;
+
+    if (event.key.toLowerCase() === "s") {
+        document.getElementById("linkSap").click();
+    }
+});
+</script>
+
+<h1>Boleto MEI</h1>
+<h1>
+  <a href="https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao" id="linkMEI">
+    PGMEI (tecla M)
+  </a>
+</h1>
+
 <h1>Cagece</h1>
 <h1><a href="https://www.cagece.com.br/canais-de-atendimento/lojas-de-atendimento/agendamento-de-atendimento/">Agendamento Cagece</a></h1>
 
