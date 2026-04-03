@@ -29,6 +29,25 @@
 <h1><a href="imagemPraAdesivo.html">Imagem para adesivo</a></h1>
 <h1><a href="imagemPraAdesivo2.html">Imagem personalizadas(multiplas imagens)</a></h1>
 <h1><a href="fotos3por4.html">Foto 3x4</a></h1>
+<h1>
+  <a href="fotoParaMoldura.html" id="linkMoldura">
+    Foto para moldura (tecla M)
+  </a>
+</h1>
+
+<script>
+document.addEventListener("keydown", function(event) {
+
+    // evita conflito se estiver digitando
+    let tag = document.activeElement.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+    if (event.key.toLowerCase() === "m") {
+        document.getElementById("linkMoldura").click();
+    }
+
+});
+</script>
 <h1><a href="imagemParaTrabalhoEscolar.html">Imagem para trabalho escolar</a></h1>
 <h1><a href="plaquinhaDePix.html">Plaquinha de pix</a></h1>
 <h1><a href="contratoDeAluguel.html">Contrato de aluguel</a></h1>
