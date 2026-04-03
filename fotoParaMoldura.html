@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Prévia e PDF de Fotos Ajustado</title>
+<style>
+body { font-family: Arial, sans-serif; text-align: center; background: #f5f5f5; }
+.container { background: #fff; padding: 20px; margin: 20px auto; width: 750px; border-radius: 10px; }
+.preview { display: grid; gap: 5px; justify-content: center; border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+.preview img { border: 1px solid #000; object-fit: cover; }
+button, select { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>Prévia e PDF de Fotos - Ajuste Margem</h2>
+    <input type="file" id="upload" multiple><br><br>
+    <label for="tamanho">Tamanho da foto:</label>
+    <select id="tamanho">
+        <option value="10x14.5">10×14,5 cm (4 fotos em 1 página)</option>
+        <option value="15x19.5">15×19,5 cm (2 fotos em 1 página)</option>
+    </select>
+    <div class="preview" id="preview"></div>
+    <button onclick="gerarPDF()">Gerar PDF</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let imagens = [];
+const preview = document.getElementById("preview");
+const margemEsquerda = 10; // margem mínima em mm
+
+document.getElementById("upload").addEventListener("change", e => {
+    imagens = Array.from(e.target.files);
+    gerarPreview();
+});
+
+function gerarPreview() {
+    preview.innerHTML = "";
+    const tamanho = document.getElementById("tamanho").value;
+    const [cmWidth, cmHeight] = tamanho.split("x").map(Number);
+    const mmWidth = cmWidth * 10;
+    const mmHeight = cmHeight * 10;
+
+    if(tamanho === "10x14.5"){
+        preview.style.gridTemplateColumns = "repeat(2, auto)";
+        preview.style.gridTemplateRows = "repeat(2, auto)";
+    } else {
+        preview.style.gridTemplateColumns = "1fr";
+        preview.style.gridTemplateRows = "repeat(2, auto)";
+    }
+
+    imagens.slice(0,4).forEach(file => {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.width = mmWidth;
+        img.height = mmHeight;
+        preview.appendChild(img);
+    });
+}
+
+async function gerarPDF() {
+    if(imagens.length === 0){
+        alert("Selecione pelo menos uma imagem!");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('portrait', 'mm', 'a4');
+    const tamanho = document.getElementById("tamanho").value;
+    const [cmWidth, cmHeight] = tamanho.split("x").map(Number);
+    const mmWidth = cmWidth * 10;
+    const mmHeight = cmHeight * 10;
+    const espacamento = 5; // espaço entre fotos
+
+    const pageWidth = pdf.internal.pageSize.getWidth(); // largura da página
+    const pageHeight = pdf.internal.pageSize.getHeight(); // altura da página
+
+    let positions = [];
+
+    if(tamanho === "10x14.5"){ // 4 fotos (2x2)
+        const totalGridWidth = mmWidth * 2 + espacamento; // largura total do grid
+        const totalGridHeight = mmHeight * 2 + espacamento; // altura total do grid
+        const startX = (pageWidth - totalGridWidth) / 2; // centraliza horizontalmente
+        const startY = 10; // margem superior
+
+        positions = [
+            { x: startX, y: startY }, // Linha 1, Coluna 1
+            { x: startX + mmWidth + espacamento, y: startY }, // Linha 1, Coluna 2
+            { x: startX, y: startY + mmHeight + espacamento }, // Linha 2, Coluna 1
+            { x: startX + mmWidth + espacamento, y: startY + mmHeight + espacamento } // Linha 2, Coluna 2
+        ];
+    } else { // 15x19.5 → 2 fotos (1x2)
+        const startX = (pageWidth - mmWidth) / 2; // centraliza horizontalmente
+        const startY = 10;
+
+        positions = [
+            { x: startX, y: startY },
+            { x: startX, y: startY + mmHeight + espacamento }
+        ];
+    }
+
+    // Adiciona imagens e bordas
+    for(let i=0; i<Math.min(imagens.length, positions.length); i++){
+        await new Promise(resolve => {
+            const img = new Image();
+            img.src = URL.createObjectURL(imagens[i]);
+            img.onload = function(){
+                pdf.addImage(img, 'JPEG', positions[i].x, positions[i].y, mmWidth, mmHeight);
+                pdf.setDrawColor(0,0,0);
+                pdf.setLineWidth(0.2);
+                pdf.rect(positions[i].x, positions[i].y, mmWidth, mmHeight);
+                resolve();
+            }
+        });
+    }
+
+    pdf.save("fotos_moldura.pdf");
+}
+</script>
+
+<a href="index.html" id="btnVoltar">Voltar</a>
+
+<script>
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        document.getElementById("btnVoltar").click();
+    }
+});
+</script>
+</body>
+</html>
