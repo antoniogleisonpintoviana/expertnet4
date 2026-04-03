@@ -79,10 +79,22 @@ document.addEventListener("keydown", function(event) {
 
 <h1>Boleto MEI</h1>
 <h1>
-  <a href="https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao" id="linkMEI" target="_blank">
-    PGMEI (tecla M)
+  <a href="https://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao" 
+     id="linkMEI" 
+     target="_blank">
+    PGMEI (tecla P)
   </a>
 </h1>
+
+<script>
+document.addEventListener("keydown", function(e) {
+    // Verifica se apertou a tecla "p" (maiúscula ou minúscula)
+    if (e.key.toLowerCase() === "p") {
+        const link = document.getElementById("linkMEI");
+        window.open(link.href, "_blank");
+    }
+});
+</script>
 
 <h1>Cagece</h1>
 <h1><a href="https://www.cagece.com.br/canais-de-atendimento/lojas-de-atendimento/agendamento-de-atendimento/">Agendamento Cagece</a></h1>
