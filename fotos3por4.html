@@ -121,7 +121,8 @@ function baixarPDF() {
 
     const larguraTotalCm = 3 * config.quantidade + (0.1 * (config.quantidade - 1));
 
-    pdf.addImage(imgData, "JPEG", 1, 1, larguraTotalCm, 4);
+    //mudar aqui
+	pdf.addImage(imgData, "JPEG", 1, 0.5, larguraTotalCm, 4);
 
     pdf.save("fotos_3x4.pdf");
 }
