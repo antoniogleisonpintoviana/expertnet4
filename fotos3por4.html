@@ -2,132 +2,162 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Fotos 3x4 com Preview</title>
+<title>Fotos 3x4 com Varinha Mágica</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        background: #f4f4f4;
-        padding: 20px;
-    }
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #f4f4f4;
+}
 
-    h2 {
-        color: #02376E;
-    }
+canvas {
+    border: 2px solid #ccc;
+    margin-top: 10px;
+    max-width: 100%;
+}
 
-    input {
-        margin: 15px;
-    }
-
-    button {
-        padding: 10px 20px;
-        background: #0566B1;
-        color: white;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-        margin: 5px;
-    }
-
-    button:hover {
-        background: #02376E;
-    }
-
-    canvas {
-        border: 2px solid #ccc;
-        background: white;
-        margin-top: 20px;
-        max-width: 100%;
-    }
+button {
+    padding: 10px;
+    margin: 5px;
+    background: #0566B1;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Gerador de Fotos 3x4</h2>
+<h2>Fotos 3x4</h2>
 
-<input type="file" id="upload" accept="image/*">
+<input type="file" id="upload">
 <br>
 
+<canvas id="canvas"></canvas>
+
+<br>
 <button onclick="gerar()">Gerar Preview</button>
 <button onclick="baixarPDF()">Baixar PDF</button>
 
 <br>
-<canvas id="canvas"></canvas>
+<canvas id="preview"></canvas>
 
-<!-- jsPDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-let canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const preview = document.getElementById("preview");
+const ctxPreview = preview.getContext("2d");
+
+const upload = document.getElementById("upload");
 
 let config = {
     dpi: 300,
     quantidade: 6
 };
 
+// ===== CARREGAR IMAGEM =====
+upload.onchange = function(){
+    const img = new Image();
+    img.src = URL.createObjectURL(upload.files[0]);
+
+    img.onload = function(){
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img,0,0);
+    }
+};
+
+// ===== VARINHA MÁGICA =====
+const tolerance = 40;
+
+canvas.onclick = function(e){
+    const x = e.offsetX;
+    const y = e.offsetY;
+
+    let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    let data = imgData.data;
+
+    const index = (y * canvas.width + x) * 4;
+
+    const targetR = data[index];
+    const targetG = data[index+1];
+    const targetB = data[index+2];
+
+    function match(r,g,b){
+        return Math.abs(r-targetR) < tolerance &&
+               Math.abs(g-targetG) < tolerance &&
+               Math.abs(b-targetB) < tolerance;
+    }
+
+    let stack = [[x,y]];
+    let visited = new Set();
+
+    while(stack.length){
+        let [px,py] = stack.pop();
+
+        if(px<0 || py<0 || px>=canvas.width || py>=canvas.height) continue;
+
+        let i = (py * canvas.width + px) * 4;
+
+        if(visited.has(i)) continue;
+        visited.add(i);
+
+        let r = data[i];
+        let g = data[i+1];
+        let b = data[i+2];
+
+        if(match(r,g,b)){
+            data[i+3] = 0;
+
+            stack.push([px+1,py]);
+            stack.push([px-1,py]);
+            stack.push([px,py+1]);
+            stack.push([px,py-1]);
+        }
+    }
+
+    ctx.putImageData(imgData,0,0);
+};
+
+// ===== CONVERSÃO =====
 function cmToPx(cm) {
     return (cm * config.dpi) / 2.54;
 }
 
-function gerar() {
-    const fileInput = document.getElementById('upload');
+// ===== GERAR 3x4 =====
+function gerar(){
 
-    if (!fileInput.files[0]) {
-        alert("Selecione uma imagem!");
-        return;
+    const larguraFoto = cmToPx(3);
+    const alturaFoto = cmToPx(4);
+    const espaco = cmToPx(0.1);
+
+    preview.width = (larguraFoto * config.quantidade) + (espaco * (config.quantidade - 1));
+    preview.height = alturaFoto;
+
+    ctxPreview.fillStyle = "white";
+    ctxPreview.fillRect(0, 0, preview.width, preview.height);
+
+    for (let i = 0; i < config.quantidade; i++) {
+
+        let x = i * (larguraFoto + espaco);
+
+        ctxPreview.drawImage(
+            canvas, // 🔥 usa o canvas editado
+            0, 0, canvas.width, canvas.height,
+            x, 0, larguraFoto, alturaFoto
+        );
+
+        ctxPreview.strokeStyle = "black";
+        ctxPreview.strokeRect(x, 0, larguraFoto, alturaFoto);
     }
-
-    const img = new Image();
-
-    img.onload = function () {
-
-        const larguraFoto = cmToPx(3);
-        const alturaFoto = cmToPx(4);
-        const espaco = cmToPx(0.1);
-
-        canvas.width = (larguraFoto * config.quantidade) + (espaco * (config.quantidade - 1));
-        canvas.height = alturaFoto;
-
-        // fundo branco
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        for (let i = 0; i < config.quantidade; i++) {
-            let x = i * (larguraFoto + espaco);
-
-            let proporcao = larguraFoto / alturaFoto;
-            let larguraCrop, alturaCrop;
-
-            if (img.width / img.height > proporcao) {
-                alturaCrop = img.height;
-                larguraCrop = alturaCrop * proporcao;
-            } else {
-                larguraCrop = img.width;
-                alturaCrop = larguraCrop / proporcao;
-            }
-
-            let sx = (img.width - larguraCrop) / 2;
-            let sy = (img.height - alturaCrop) / 2;
-
-            ctx.drawImage(
-                img,
-                sx, sy, larguraCrop, alturaCrop,
-                x, 0, larguraFoto, alturaFoto
-            );
-
-            // ===== BORDA PRETA =====
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 2; // linha fina
-            ctx.strokeRect(x, 0, larguraFoto, alturaFoto);
-        }
-    };
-
-    img.src = URL.createObjectURL(fileInput.files[0]);
 }
 
+// ===== PDF =====
 function baixarPDF() {
     const { jsPDF } = window.jspdf;
 
@@ -137,30 +167,15 @@ function baixarPDF() {
         format: "a4"
     });
 
-    const imgData = canvas.toDataURL("image/jpeg", 1.0);
+    const imgData = preview.toDataURL("image/jpeg", 1.0);
 
     const larguraTotalCm = 3 * config.quantidade + (0.1 * (config.quantidade - 1));
-    const alturaTotalCm = 4;
 
-    pdf.addImage(
-        imgData,
-        "JPEG",
-        1,
-        1,
-        larguraTotalCm,
-        alturaTotalCm
-    );
+    pdf.addImage(imgData, "JPEG", 1, 1, larguraTotalCm, 4);
 
     pdf.save("fotos_3x4.pdf");
 }
 </script>
-<a href="index.html" id="btnVoltar">Voltar</a>
 
-<script>
-document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") {
-        document.getElementById("btnVoltar").click();
-    }
-});
-</script></body>
+</body>
 </html>
