@@ -72,57 +72,7 @@ upload.onchange = function(){
     }
 };
 
-// ===== VARINHA MÁGICA =====
-const tolerance = 40;
 
-canvas.onclick = function(e){
-    const x = e.offsetX;
-    const y = e.offsetY;
-
-    let imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    let data = imgData.data;
-
-    const index = (y * canvas.width + x) * 4;
-
-    const targetR = data[index];
-    const targetG = data[index+1];
-    const targetB = data[index+2];
-
-    function match(r,g,b){
-        return Math.abs(r-targetR) < tolerance &&
-               Math.abs(g-targetG) < tolerance &&
-               Math.abs(b-targetB) < tolerance;
-    }
-
-    let stack = [[x,y]];
-    let visited = new Set();
-
-    while(stack.length){
-        let [px,py] = stack.pop();
-
-        if(px<0 || py<0 || px>=canvas.width || py>=canvas.height) continue;
-
-        let i = (py * canvas.width + px) * 4;
-
-        if(visited.has(i)) continue;
-        visited.add(i);
-
-        let r = data[i];
-        let g = data[i+1];
-        let b = data[i+2];
-
-        if(match(r,g,b)){
-            data[i+3] = 0;
-
-            stack.push([px+1,py]);
-            stack.push([px-1,py]);
-            stack.push([px,py+1]);
-            stack.push([px,py-1]);
-        }
-    }
-
-    ctx.putImageData(imgData,0,0);
-};
 
 // ===== CONVERSÃO =====
 function cmToPx(cm) {
@@ -176,16 +126,6 @@ function baixarPDF() {
     pdf.save("fotos_3x4.pdf");
 }
 </script>
-</script>
 
-<a href="index.html" id="btnVoltar">Voltar</a>
-
-<script>
-document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") {
-        document.getElementById("btnVoltar").click();
-    }
-});
-</script>
 </body>
 </html>
