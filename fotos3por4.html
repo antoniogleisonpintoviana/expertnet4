@@ -176,6 +176,16 @@ function baixarPDF() {
     pdf.save("fotos_3x4.pdf");
 }
 </script>
+</script>
 
+<a href="index.html" id="btnVoltar">Voltar</a>
+
+<script>
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        document.getElementById("btnVoltar").click();
+    }
+});
+</script>
 </body>
 </html>
