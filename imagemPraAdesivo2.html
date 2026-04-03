@@ -312,7 +312,14 @@ pdf.save("folha-a4.pdf")
 
 </script>
 
-<a href="index.html">Voltar</a>
+<a href="index.html" id="btnVoltar">Voltar</a>
 
+<script>
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        document.getElementById("btnVoltar").click();
+    }
+});
+</script>
 </body>
 </html>
