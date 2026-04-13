@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title></title>
+</head>
+<body>
+
+<input id="foto" type="file" accept="image/*" multiple>
+<br><br><br>
+
+
+<!--<img id="img1"
+onclick="
+this.style.transform='rotate(90deg)';
+this.style.position='absolute';
+this.style.top='0.5cm';-->
+
+<img id="img1" ondblclick="this.style.display='none'">
+
+<img id="img2" ondblclick="this.style.display='none'">
+<img id="img3" ondblclick="this.style.display='none'">
+<img id="img4" ondblclick="this.style.display='none'">
+
+
+
+
+<br><br>
+
+<button id="mostrarfoto" onclick="mostarFotos()">Mostrar fotos</button>
+<br><br>
+
+<button id="imprimir" style="display:none" onclick="imprimirFotos()">Imprimir</button>
+
+<script>
+//meia folha 1
+var grau = 0;
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "1") {
+
+        //imagem 1
+        var img = document.getElementById("img1");
+        
+        grau += 90; // soma 90 a cada vez
+        img.style.transform = "rotate(" + grau + "deg)";
+        img.style.top = "0.5cm";
+		img.style.left = "3cm";
+    }
+});
+</script>
+
+
+<script>
+//meia folha 3
+var grau = 0;
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "3") {
+
+        //imagem 3
+        var img = document.getElementById("img3");
+
+        if (img) { // evita erro se não existir
+            grau += 90; // soma 90 a cada vez
+            img.style.transform = "rotate(" + grau + "deg)";
+            img.style.top = "12.9cm";
+			img.style.left = "3.2cm";
+        }
+    }
+});
+</script>
+
+
+<script>
+
+
+
+var aux = 6; // controle global
+
+function mostarFotos(){
+    var foto = document.getElementById("foto");
+    var mostrarfoto = document.getElementById("mostrarfoto");
+	
+	
+	foto.style.display="none";
+	mostrarfoto.style.display="none";
+	
+	var img1 = document.getElementById("img1");
+	var img2 = document.getElementById("img2");
+	var img3 = document.getElementById("img3");
+	var img4 = document.getElementById("img4");
+	
+	img1.style.width="10cm";
+	img1.style.height="14.5cm";
+	img1.style.position="absolute";
+	img1.style.left="1cm";
+	img1.style.top="0.5cm";
+	
+	
+	img2.style.width="10cm";
+	img2.style.height="14.5cm";
+	img2.style.position="absolute";
+	img2.style.left="11.2cm";
+	img2.style.top="0.5cm";
+	
+	img3.style.width="10cm";
+	img3.style.height="14.5cm";
+	img3.style.position="absolute";
+	img3.style.top="15.3cm";
+	img3.style.left="1cm";
+	
+	img4.style.width="10cm";
+	img4.style.height="14.5cm";
+	img4.style.position="absolute";
+	img4.style.top="15.3cm";
+	img4.style.left="11.2cm";
+	
+    
+    var imprimir = document.getElementById("imprimir");
+
+    if(foto.files[0]){
+        var url1 = URL.createObjectURL(foto.files[0]);
+        img1.src = url1;
+    }
+
+    if(foto.files[1]){
+        var url2 = URL.createObjectURL(foto.files[1]);
+        img2.src = url2;
+    }
+
+    if(foto.files[2]){
+        var url3 = URL.createObjectURL(foto.files[2]);
+        img3.src = url3;
+    }
+
+    if(foto.files[3]){
+        var url4 = URL.createObjectURL(foto.files[3]);
+        img4.src = url4;
+    }
+
+    imprimir.style.display = "block";
+	imprimir.style.position="absolute";
+	imprimir.style.top="32cm";
+	
+	
+}
+
+function imprimirFotos(){
+    document.getElementById("mostrarfoto").style.display = "none";
+    document.getElementById("foto").style.display = "none";
+    document.getElementById("imprimir").style.display = "none";
+
+    window.print();
+}
+
+
+
+</script>
+
+</body>
+</html>
