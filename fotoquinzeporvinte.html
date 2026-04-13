@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+<meta charset="UTF-8">
+<title></title>
+</head>
+<body>
+
+<input id="foto" type="file" accept="image/*" multiple>
+<br><br><br>
+
+
+<img id="img1" ondblclick="this.style.display='none'">
+
+<img id="img2" ondblclick="this.style.display='none'">
+
+
+
+
+
+<br><br>
+
+<button id="mostrarfoto" onclick="mostarFotos()">Mostrar fotos</button>
+<br><br>
+
+<button id="imprimir" style="display:none" onclick="imprimirFotos()">Imprimir</button>
+
+
+
+
+
+
+<script>
+
+
+
+var aux = 6; // controle global
+
+function mostarFotos(){
+    var foto = document.getElementById("foto");
+    var mostrarfoto = document.getElementById("mostrarfoto");
+	
+	
+	foto.style.display="none";
+	mostrarfoto.style.display="none";
+	
+	var img1 = document.getElementById("img1");
+	var img2 = document.getElementById("img2");
+	
+	
+	
+	img1.style.width="14.5cm";
+	img1.style.height="19.5cm";
+	img1.style.transform = "rotate(270deg)";
+	img1.style.position="absolute";
+	img1.style.left="2cm";
+	img1.style.top="0.2cm";
+	
+	
+	img2.style.width="14.5cm";
+	img2.style.height="19.5cm";
+	img2.style.transform = "rotate(270deg)";
+	
+	img2.style.position="absolute";
+	img2.style.left="2cm";
+	img2.style.top="15cm";
+	
+	
+	
+    
+    var imprimir = document.getElementById("imprimir");
+
+    if(foto.files[0]){
+        var url1 = URL.createObjectURL(foto.files[0]);
+        img1.src = url1;
+    }
+
+    if(foto.files[1]){
+        var url2 = URL.createObjectURL(foto.files[1]);
+        img2.src = url2;
+    }
+
+    
+    imprimir.style.display = "block";
+	imprimir.style.position="absolute";
+	imprimir.style.top="35cm";
+	
+	
+}
+
+function imprimirFotos(){
+    document.getElementById("mostrarfoto").style.display = "none";
+    document.getElementById("foto").style.display = "none";
+    document.getElementById("imprimir").style.display = "none";
+
+    window.print();
+}
+
+
+
+</script>
+
+</body>
+</html>
