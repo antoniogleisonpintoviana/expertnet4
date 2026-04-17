@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Placas PIX - Ajuste de Bordas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding: 20px; }
+        .controles { background: #2d2d2d; padding: 20px; border-radius: 12px; max-width: 650px; margin: 0 auto 20px; border: 1px solid #444; }
+        textarea { width: 95%; height: 100px; margin: 10px 0; padding: 12px; border-radius: 6px; font-size: 14px; border: none; }
+        button { padding: 12px 24px; cursor: pointer; background: #0a8f5a; color: white; border: none; border-radius: 6px; font-weight: bold; margin: 5px; }
+        button:hover { background: #0db371; }
+        
+        .preview-container {
+            position: relative;
+            width: 21cm;
+            height: 29.7cm;
+            background: white;
+            margin: 0 auto;
+            border: 1px solid #000;
+        }
+
+        .placa {
+            position: absolute;
+            width: 6.5cm;
+            height: 10.5cm; /* Aumentado levemente para o respiro */
+            background: white;
+            color: black;
+            transition: all 0.3s ease;
+            transform-origin: center center;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .qr-area { width: 6.5cm; height: 7cm; display: flex; align-items: center; justify-content: center; }
+        .qr-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        .texto-area {
+            width: 6.5cm;
+            height: 3cm;
+            border: 0.6mm solid black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 5px;
+            margin-top: 5px; /* Respiro entre QR e Texto */
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controles">
+        <h2>Gerador de Placas PIX</h2>
+        <textarea id="textoLivre" placeholder="Digite os dados do PIX aqui..."></textarea>
+        <br>
+        <input type="file" id="uploadQR" accept="image/*">
+        <br><br>
+        <button type="button" onclick="atualizarDados()">1. Atualizar Preview</button>
+        <button type="button" onclick="gerarPDF()" style="background: #0056b3;">2. Gerar PDF</button>
+    </div>
+
+    <div id="pagina" class="preview-container"></div>
+
+<script>
+    let qrBase64 = "";
+    let angulos = [0, 0, 0, 0];
+    let visivel = [true, true, true, true];
+
+    const MARGEM_TOP = 0.5;
+    const COL1_X = 2.0; 
+    const COL2_X = 10.5;
+
+    function inicializar() {
+        const container = document.getElementById("pagina");
+        container.innerHTML = "";
+        for(let i=0; i<4; i++) {
+            container.innerHTML += `
+                <div id="p${i}" class="placa" onclick="togglePlaca(${i})">
+                    <div class="qr-area"><img id="q${i}"></div>
+                    <div id="t${i}" class="texto-area"></div>
+                </div>`;
+        }
+    }
+    inicializar();
+
+    window.atualizarDados = function() {
+        const textoInput = document.getElementById("textoLivre").value;
+        for(let i=0; i<4; i++) {
+            document.getElementById("t"+i).innerText = textoInput || "Dados do PIX";
+            if(qrBase64) document.getElementById("q"+i).src = qrBase64;
+        }
+        recalcularLayout();
+    };
+
+    window.togglePlaca = function(i) {
+        visivel[i] = !visivel[i];
+        recalcularLayout();
+    };
+
+    window.recalcularLayout = function() {
+        for(let i=0; i<4; i++) {
+            const el = document.getElementById("p"+i);
+            if(!el) continue;
+            el.style.display = visivel[i] ? "block" : "none";
+            
+            const girado = (angulos[i] / 90) % 2 !== 0;
+            const x = (i % 2 === 0) ? COL1_X : COL2_X;
+            let y;
+
+            if (i < 2) {
+                y = MARGEM_TOP;
+                if(girado) y += 1.75; 
+            } else {
+                const cimaGirado = (angulos[i-2] / 90) % 2 !== 0;
+                const hCima = cimaGirado ? 6.5 : 10.5;
+                y = MARGEM_TOP + hCima + 0.4;
+                if(girado) y += 1.75;
+            }
+
+            el.style.transform = `rotate(${angulos[i]}deg)`;
+            el.style.top = y + "cm";
+            el.style.left = x + "cm";
+        }
+    };
+
+    document.getElementById("uploadQR").onchange = function(e) {
+        const reader = new FileReader();
+        reader.onload = (evt) => { 
+            qrBase64 = evt.target.result;
+            window.atualizarDados();
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    };
+
+    document.onkeydown = (e) => {
+        let key = parseInt(e.key);
+        if (key >= 1 && key <= 4) {
+            angulos[key-1] = (angulos[key-1] + 90) % 360;
+            window.recalcularLayout();
+        }
+    };
+
+    window.gerarPDF = async function() {
+        if(!qrBase64) { alert("Selecione o QR Code!"); return; }
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ unit: "cm", format: "a4" });
+
+        for (let i = 0; i < 4; i++) {
+            if (!visivel[i]) continue;
+            const placaImg = await capturarComoImagem(i);
+            const girado = (angulos[i] / 90) % 2 !== 0;
+            const x = (i % 2 === 0) ? COL1_X : COL2_X;
+            let y;
+
+            if (i < 2) y = MARGEM_TOP;
+            else {
+                const acimaGirado = (angulos[i-2] / 90) % 2 !== 0;
+                y = MARGEM_TOP + (acimaGirado ? 6.5 : 10.5) + 0.4;
+            }
+
+            pdf.addImage(placaImg, "JPEG", x, y, girado ? 10.5 : 6.5, girado ? 6.5 : 10.5);
+        }
+        pdf.save("placas_pix_final.pdf");
+    };
+
+    async function capturarComoImagem(index) {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const ang = angulos[index];
+        const girado = (ang / 90) % 2 !== 0;
+        
+        const scale = 4; // Qualidade
+        const w = 6.5 * 37.8 * scale;
+        const h = 10.5 * 37.8 * scale;
+
+        canvas.width = girado ? h : w;
+        canvas.height = girado ? w : h;
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.rotate(ang * Math.PI / 180);
+
+        const imgEl = document.getElementById("q"+index);
+        if(imgEl && imgEl.src) {
+            // Desenha o QR ocupando os 7cm iniciais (escala proporcional)
+            ctx.drawImage(imgEl, -w/2, -h/2, w, (7 * 37.8 * scale));
+        }
+
+        // Borda do texto com a mesma largura do QR (6.5cm)
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2 * scale;
+        // Posicionado a 7.2cm do topo (respiro de 0.2cm do QR)
+        const yTexto = (-h/2) + (7.2 * 37.8 * scale);
+        const hCaixaTexto = (3 * 37.8 * scale);
+        
+        ctx.strokeRect(-w/2, yTexto, w, hCaixaTexto);
+
+        // Texto interno
+        ctx.fillStyle = "black";
+        ctx.font = `bold ${13 * scale}px Arial`;
+        ctx.textAlign = "center";
+        const linhas = document.getElementById("textoLivre").value.split('\n');
+        linhas.forEach((l, idx) => {
+            // Centraliza verticalmente dentro da caixa de texto
+            ctx.fillText(l, 0, yTexto + (hCaixaTexto/2) - (linhas.length * 10) + (idx * 18 * scale));
+        });
+
+        return canvas.toDataURL("image/jpeg", 0.9);
+    }
+</script>
+</body>
+</html>
