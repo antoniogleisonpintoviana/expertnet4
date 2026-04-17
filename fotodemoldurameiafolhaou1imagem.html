@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Fotos para Moldura - Otimização de Espaço</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #333; color: white; }
+        .controles { margin-bottom: 15px; background: #444; padding: 15px; border-radius: 8px; }
+        
+        /* Simulação da folha A4 no navegador */
+        .preview-container {
+            position: relative;
+            width: 21cm;
+            height: 29.7cm;
+            border: 1px solid #000;
+            background-color: white;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .img-preview {
+            width: 10cm;
+            height: 14cm;
+            position: absolute;
+            object-fit: cover;
+            background-color: #ddd;
+            border: 0.1mm solid #000;
+            transition: all 0.3s ease-in-out;
+            transform-origin: center center;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Otimizador de Impressão (Teclas 1, 2, 3, 4)</h2>
+    <div class="controles">
+        <input type="file" id="inputFile" accept="image/*" multiple>
+        <button onclick="mostrarImagem()">Carregar Fotos</button>
+        <button onclick="gerarPDF()">Gerar PDF para Impressão</button>
+        <p><small>Pressione as teclas numéricas para girar cada foto individualmente.</small></p>
+    </div>
+
+    <div class="preview-container">
+        <img id="img1" class="img-preview" style="top: 0.5cm; left: 0.5cm;">
+        <img id="img2" class="img-preview" style="top: 0.5cm; left: 10.6cm;">
+        <img id="img3" class="img-preview" style="top: 14.7cm; left: 0.5cm;">
+        <img id="img4" class="img-preview" style="top: 14.7cm; left: 10.6cm;">
+    </div>
+
+<script>
+    // Estados de rotação
+    let angulos = [0, 0, 0, 0];
+    const ids = ["img1", "img2", "img3", "img4"];
+
+    // Configurações de layout (cm)
+    const MARGEM_SUPERIOR = 0.5;
+    const MARGEM_ESQUERDA_COL1 = 0.5;
+    const MARGEM_ESQUERDA_COL2 = 10.6;
+    const ALTURA_FOTO = 14;
+    const LARGURA_FOTO = 10;
+    const ESPACAMENTO = 0.2; // Pequeno respiro entre fotos
+
+    document.addEventListener('keydown', (event) => {
+        const tecla = parseInt(event.key);
+        if (tecla >= 1 && tecla <= 4) {
+            girarFoto(tecla - 1);
+        }
+    });
+
+    function girarFoto(index) {
+        angulos[index] = (angulos[index] + 90) % 360;
+        atualizarLayout();
+    }
+
+    function atualizarLayout() {
+        ids.forEach((id, i) => {
+            const el = document.getElementById(id);
+            const estaGirado = (angulos[i] / 90) % 2 !== 0;
+            
+            // Aplica a rotação visual
+            el.style.transform = `rotate(${angulos[i]}deg)`;
+
+            // Cálculo de posição para economizar espaço
+            // Se a foto de cima (1 ou 2) girar, ela fica com 10cm de altura efetiva
+            // Então a foto de baixo (3 ou 4) precisa subir.
+            
+            let topPos;
+            let leftPos = (i === 0 || i === 2) ? MARGEM_ESQUERDA_COL1 : MARGEM_ESQUERDA_COL2;
+
+            if (i < 2) { // Fotos de cima (1 e 2)
+                topPos = MARGEM_SUPERIOR;
+                if (estaGirado) topPos += 2; // Compensação do transform-origin center (14-10)/2
+            } else { // Fotos de baixo (3 e 4)
+                const indexCima = i - 2;
+                const cimaGirado = (angulos[indexCima] / 90) % 2 !== 0;
+                
+                // O topo da imagem de baixo depende se a de cima está deitada ou em pé
+                let alturaOcupadaCima = cimaGirado ? LARGURA_FOTO : ALTURA_FOTO;
+                topPos = MARGEM_SUPERIOR + alturaOcupadaCima + ESPACAMENTO;
+
+                if (estaGirado) topPos += 2; // Compensação se a própria imagem de baixo girar
+            }
+
+            el.style.top = topPos + "cm";
+            el.style.left = leftPos + "cm";
+        });
+    }
+
+    function mostrarImagem() {
+        const input = document.getElementById("inputFile");
+        const files = input.files;
+        for (let i = 0; i < ids.length; i++) {
+            if (files[i]) document.getElementById(ids[i]).src = URL.createObjectURL(files[i]);
+        }
+    }
+
+    function canvasProcess(img, angulo) {
+        return new Promise((resolve) => {
+            if (!img.src || img.src.includes('undefined')) return resolve(null);
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const girado = (angulo / 90) % 2 !== 0;
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            canvas.width = girado ? h : w;
+            canvas.height = girado ? w : h;
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((angulo * Math.PI) / 180);
+            ctx.drawImage(img, -w / 2, -h / 2);
+            resolve(canvas.toDataURL("image/jpeg", 0.8));
+        });
+    }
+
+    async function gerarPDF() {
+        const { jsPDF } = window.jspdf;
+        let pdf = new jsPDF({ unit: "cm", format: "a4" });
+
+        for (let i = 0; i < ids.length; i++) {
+            const el = document.getElementById(ids[i]);
+            const base64 = await canvasProcess(el, angulos[i]);
+            
+            if (base64) {
+                const estaGirado = (angulos[i] / 90) % 2 !== 0;
+                const col = (i === 0 || i === 2) ? MARGEM_ESQUERDA_COL1 : MARGEM_ESQUERDA_COL2;
+                
+                let row;
+                if (i < 2) {
+                    row = MARGEM_SUPERIOR;
+                } else {
+                    const cimaGirado = (angulos[i-2] / 90) % 2 !== 0;
+                    row = MARGEM_SUPERIOR + (cimaGirado ? 10 : 14) + ESPACAMENTO;
+                }
+
+                pdf.addImage(base64, "JPEG", col, row, estaGirado ? 14 : 10, estaGirado ? 10 : 14);
+            }
+        }
+        pdf.save("folha_economica.pdf");
+    }
+</script>
+
+</body>
+</html>
