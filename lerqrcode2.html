@@ -17,10 +17,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
     }
-
-    h1 { font-size: 22px; margin-bottom: 15px; }
 
     #reader-container {
       width: 100%;
@@ -45,8 +42,8 @@
 
     .btn {
       flex: 1;
-      padding: 14px;
-      font-size: 16px;
+      padding: 12px;
+      font-size: 15px;
       font-weight: bold;
       border: none;
       border-radius: 10px;
@@ -57,14 +54,14 @@
     #startBtn { background: #28a745; color: white; }
     #stopBtn { background: #dc3545; color: white; }
     
-    /* Estilo do Botão Copiar - Agora com destaque */
+    /* Estilo do Botão Copiar */
     #copyBtn { 
       background: #007bff; 
       color: white; 
       width: 100%; 
-      margin-top: 15px;
-      display: none; /* Só aparece após a leitura */
-      border: 2px solid #0056b3;
+      max-width: 500px;
+      margin-top: 10px;
+      display: none; /* Escondido até ter algo para copiar */
     }
 
     .btn:disabled { background: #ccc !important; opacity: 0.6; }
@@ -81,23 +78,15 @@
 
     #result-text {
       display: block;
-      margin-top: 10px;
-      padding: 12px;
+      margin-top: 8px;
+      padding: 10px;
       background: #f8f9fa;
-      border-radius: 8px;
-      border: 1px dashed #007bff;
+      border-radius: 6px;
+      border: 1px dashed #ccc;
       word-break: break-all;
-      min-height: 45px;
-      color: #333;
+      min-height: 40px;
+      color: #0056b3;
       font-family: monospace;
-      font-size: 14px;
-    }
-
-    .status-badge {
-      font-size: 12px;
-      font-weight: bold;
-      text-transform: uppercase;
-      color: #666;
     }
   </style>
 </head>
@@ -110,14 +99,14 @@
   </div>
 
   <div class="buttons-container">
-    <button id="startBtn" class="btn">Iniciar Câmera</button>
+    <button id="startBtn" class="btn">Iniciar</button>
     <button id="stopBtn" class="btn" disabled>Parar</button>
   </div>
 
   <div id="result-box">
-    <span class="status-badge">Resultado da Leitura:</span>
-    <span id="result-text">Aguardando leitura de código...</span>
-    <button id="copyBtn" class="btn">📋 Copiar Texto</button>
+    <p><strong>Resultado:</strong></p>
+    <span id="result-text">Aguardando leitura...</span>
+    <button id="copyBtn" class="btn">📋 Copiar Conteúdo</button>
   </div>
 
 <script>
@@ -127,20 +116,14 @@
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
 
-  // FUNÇÃO DE SUCESSO
   function onScanSuccess(decodedText) {
     resultText.innerText = decodedText;
+    copyBtn.style.display = "block"; // Mostra o botão de copiar
+    copyBtn.innerText = "📋 Copiar Conteúdo"; // Reseta o texto do botão
     
-    // ATIVA O BOTÃO DE COPIAR
-    copyBtn.style.display = "block"; 
-    copyBtn.innerText = "📋 Copiar Conteúdo";
-    copyBtn.style.background = "#007bff";
-    
-    // VIBRAR CELULAR (Feedback)
     if (navigator.vibrate) navigator.vibrate(100);
   }
 
-  // INICIAR CÂMERA
   async function startScanner() {
     try {
       if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
@@ -150,34 +133,26 @@
 
       await html5QrCode.start(
         { facingMode: "environment" },
-        { 
-          fps: 15, 
-          qrbox: (w, h) => {
-            let size = Math.min(w, h) * 0.7;
-            return { width: size, height: size };
-          } 
-        },
+        { fps: 15, qrbox: (w, h) => ({ width: w * 0.7, height: w * 0.7 }) },
         onScanSuccess
       );
 
       startBtn.disabled = true;
       stopBtn.disabled = false;
     } catch (err) {
-      alert("Erro ao abrir câmera: " + err);
+      alert("Erro na câmera: " + err);
     }
   }
 
-  // PARAR CÂMERA
   async function stopScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
+    if (html5QrCode) {
       await html5QrCode.stop();
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      resultText.innerText = "Câmera parada.";
     }
   }
 
-  // LÓGICA DE COPIAR (Clipboard API)
+  // --- LÓGICA DE COPIAR ---
   copyBtn.addEventListener("click", () => {
     const textToCopy = resultText.innerText;
     
@@ -189,12 +164,13 @@
         setTimeout(() => {
           copyBtn.innerText = "📋 Copiar Conteúdo";
           copyBtn.style.background = "#007bff";
-        }, 2500);
+        }, 2000);
       }).catch(err => {
-        alert("Erro ao copiar: " + err);
+        console.error("Erro ao copiar: ", err);
       });
     } else {
-      alert("Seu navegador não permite cópia automática (Requer HTTPS).");
+      // Fallback para navegadores muito antigos
+      alert("Seu navegador não suporta cópia automática.");
     }
   });
 
