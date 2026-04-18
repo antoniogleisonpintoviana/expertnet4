@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Leitor de QR Code Responsivo</title>
+  
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    /* Reset básico para garantir consistência em mobile */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      text-align: center;
+      background: #f0f2f5;
+      color: #333;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #1a1a1a;
+    }
+
+    /* Container principal do leitor */
+    #reader-container {
+      width: 100%;
+      max-width: 500px; /* Limite para telas grandes */
+      background: white;
+      padding: 10px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      overflow: hidden; /* Garante que nada saia das bordas arredondadas */
+    }
+
+    /* O elemento onde a câmera será renderizada */
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000; /* Fundo preto enquanto a câmera carrega */
+      border: none !important; /* Remove bordas padrão da biblioteca */
+    }
+
+    /* Estilização dos botões e textos gerados automaticamente pela biblioteca dentro do #reader */
+    #reader button {
+      padding: 8px 12px;
+      margin: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #reader img[alt="Camera based scanning"] {
+      /* Estiliza o ícone de câmera que aparece antes de iniciar */
+      width: 64px;
+      height: 64px;
+      opacity: 0.5;
+    }
+
+    .buttons-container {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent; /* Remove o flash azul no mobile */
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    #startBtn {
+      background-color: #28a745;
+      color: white;
+    }
+
+    #startBtn:hover {
+      background-color: #218838;
+    }
+
+    #stopBtn {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    #stopBtn:hover {
+      background-color: #c82333;
+    }
+
+    /* Botão desabilitado */
+    .btn:disabled {
+      background-color: #a6a6a6 !important;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    #result {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      font-size: 16px;
+      word-break: break-all; /* Força quebra de links longos */
+      min-height: 50px;
+    }
+
+    #result-text {
+      font-weight: bold;
+      color: #0056b3;
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>📷 Leitor de QR Code</h1>
+
+  <div id="reader-container">
+    <div id="reader"></div>
+  </div>
+
+  <div class="buttons-container">
+    <button id="startBtn" class="btn">Iniciar Câmera</button>
+    <button id="stopBtn" class="btn" disabled>Parar</button>
+  </div>
+
+  <div id="result">
+    <p>Status: <span id="status-text">Aguardando...</span></p>
+    <p>Resultado: <span id="result-text">Nenhum</span></p>
+  </div>
+
+<script>
+  let html5QrCode = null;
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const resultText = document.getElementById("result-text");
+  const statusText = document.getElementById("status-text");
+
+  // Função chamada quando um QR Code é lido com sucesso
+  function onScanSuccess(decodedText, decodedResult) {
+    console.log(`Código escaneado: ${decodedText}`, decodedResult);
+    resultText.innerText = decodedText;
+    statusText.innerText = "Código lido!";
+    statusText.style.color = "#28a745";
+    
+    // Opcional: Feedback tátil (vibração) em dispositivos compatíveis
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+
+    // Opcional: Se quiser parar a câmera após a primeira leitura, descomente a linha abaixo:
+    // stopScanner();
+  }
+
+  // Função opcional para lidar com erros de varredura (quadros onde não há QR Code)
+  // Geralmente deixamos vazia para não inundar o console.
+  function onScanFailure(error) {
+    // console.warn(`Erro na varredura: ${error}`);
+  }
+
+  // Função para definir o tamanho da caixa de leitura de forma responsiva
+  function getQrBoxSize(viewfinderWidth, viewfinderHeight) {
+    // Define a caixa como 70% da menor dimensão, com limites
+    let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+    let fontSize = Math.floor(minEdge * 0.7);
+    
+    // Garante que não fique pequeno demais ou grande demais
+    if (fontSize < 200) fontSize = 200;
+    if (fontSize > 400) fontSize = 400;
+
+    return { width: fontSize, height: fontSize };
+  }
+
+  async function startScanner() {
+    resultText.innerText = "Nenhum";
+    statusText.innerText = "Iniciando câmera...";
+    statusText.style.color = "#333";
+
+    try {
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+      }
+
+      const config = {
+        fps: 15, // Quadros por segundo (10-15 é bom para mobile)
+        qrbox: getQrBoxSize, // Passa a função que calcula o tamanho responsivo
+        aspectRatio: 1.0 // Força uma área de visualização quadrada (melhor para QR Codes)
+      };
+
+      // Inicia com a câmera traseira
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure // Incluído para evitar erros ocultos
+      );
+
+      statusText.innerText = "Aguardando QR Code...";
+      
+      // Atualiza estado dos botões
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+    } catch (err) {
+      console.error("Erro ao iniciar:", err);
+      statusText.innerText = "Erro!";
+      statusText.style.color = "#dc3545";
+      resultText.innerText = `Não foi possível acessar a câmera. Verifique se está usando HTTPS e se deu permissão.\nErro: ${err}`;
+      
+      // Reseta os botões caso dê erro
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  }
+
+  async function stopScanner() {
+    if (html5QrCode) {
+      statusText.innerText = "Parando...";
+      try {
+        await html5QrCode.stop();
+        // Opcional: Limpa a área de renderização após parar
+        html5QrCode.clear(); 
+        
+        statusText.innerText = "Câmera desligada.";
+        statusText.style.color = "#333";
+        
+        // Atualiza estado dos botões
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      } catch (err) {
+        console.error("Erro ao parar:", err);
+      }
+    }
+  }
+
+  // Event Listeners
+  startBtn.addEventListener("click", startScanner);
+  stopBtn.addEventListener("click", stopScanner);
+
+  // Garanter que a câmera pare se o usuário fechar a aba
+  window.addEventListener('beforeunload', stopScanner);
+
+</script>
+
+</body>
+</html>
