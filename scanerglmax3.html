@@ -175,6 +175,34 @@
         navigator.clipboard.writeText(result.innerText);
         //alert("Copiado!");
     }
+
+    //controla o tamanho do crop // Controle da Crop Box via Teclado
+window.addEventListener('keydown', (e) => {
+    if (!img.src) return; // Só funciona se tiver imagem
+
+    // Pegamos os valores atuais (removendo o 'px')
+    let w = parseInt(window.getComputedStyle(box).width);
+    let h = parseInt(window.getComputedStyle(box).height);
+    const step = 5; // Quantidade de pixels por clique
+
+    if (e.key === 'ArrowUp') {
+        box.style.height = (h + step) + 'px';
+        e.preventDefault();
+    }
+    if (e.key === 'ArrowDown') {
+        box.style.height = Math.max(20, h - step) + 'px'; // Mínimo de 20px
+        e.preventDefault();
+    }
+    if (e.key === 'ArrowRight') {
+        box.style.width = (w + step) + 'px';
+        e.preventDefault();
+    }
+    if (e.key === 'ArrowLeft') {
+        box.style.width = Math.max(20, w - step) + 'px'; // Mínimo de 20px
+        e.preventDefault();
+    }
+});
+    
 </script>
 </body>
 </html>
