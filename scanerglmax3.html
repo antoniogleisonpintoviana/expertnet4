@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLMax Scanner - Agilidade Detran-CE</title>
+    <link href="https://cdn.jsdelivr.net/gh/jamessouth/croppr.js@v2.3.0/dist/croppr.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/gh/jamessouth/croppr.js@v2.3.0/dist/croppr.min.js"></script>
+    
+    <style>
+        :root { --primary: #2563eb; --success: #16a34a; --bg: #f1f5f9; --card: #ffffff; }
+        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
+        h1 { font-size: 1.2rem; color: var(--primary); text-align: center; margin-top: 0; }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .btn-sel { background: #64748b; color: white; }
+        .btn-scan { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
+        .btn-copy { background: var(--success); color: white; width: auto; padding: 5px 15px; font-size: 0.8rem; }
+        
+        .crop-container { width: 100%; min-height: 200px; background: #eee; border-radius: 8px; overflow: hidden; margin-bottom: 10px; position: relative; }
+        #image-to-crop { max-width: 100%; display: block; }
+        
+        #result-box { background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: monospace; margin-top: 15px; position: relative; min-height: 60px; word-break: break-all; }
+        .loader { display: none; border: 3px solid #333; border-top: 3px solid #0f0; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 10px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GLMax - Extrator de Dados</h1>
+    
+    <div class="btn-group">
+        <button class="btn-sel" onclick="document.getElementById('fileIn').click()">Galeria</button>
+        <button class="btn-sel" onclick="document.getElementById('camIn').click()">Câmera</button>
+    </div>
+
+    <input type="file" id="fileIn" hidden accept="image/*">
+    <input type="file" id="camIn" hidden accept="image/*" capture="environment">
+
+    <div class="crop-container">
+        <img id="image-to-crop" src="" alt="">
+    </div>
+
+    <button id="btnAction" class="btn-scan" disabled>1. Selecione a Imagem</button>
+
+    <div id="result-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <small style="color: #888;">RESULTADO:</small>
+            <button id="btnCopy" class="btn-success" style="display:none">Copiar</button>
+        </div>
+        <div id="loader" class="loader"></div>
+        <div id="outputText">Aguardando recorte...</div>
+    </div>
+</div>
+
+<script>
+    let cropprInstance = null;
+    const imgElement = document.getElementById('image-to-crop');
+    const btnAction = document.getElementById('btnAction');
+    const outputText = document.getElementById('outputText');
+    const loader = document.getElementById('loader');
+    const btnCopy = document.getElementById('btnCopy');
+
+    function initCrop(src) {
+        if (cropprInstance) { cropprInstance.destroy(); }
+        imgElement.src = src;
+        imgElement.onload = () => {
+            cropprInstance = new Croppr('#image-to-crop', {
+                aspectRatio: null, // Livre para qualquer formato (placa ou chassi)
+                onInitialize: (instance) => {
+                    btnAction.disabled = false;
+                    btnAction.innerText = "2. Extrair Texto da Área";
+                }
+            });
+        };
+    }
+
+    [document.getElementById('fileIn'), document.getElementById('camIn')].forEach(input => {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => initCrop(event.target.result);
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    btnAction.addEventListener('click', async () => {
+        const parms = cropprInstance.getValue();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Cortar a imagem baseada na seleção
+        canvas.width = parms.width;
+        canvas.height = parms.height;
+        ctx.drawImage(imgElement, parms.x, parms.y, parms.width, parms.height, 0, 0, parms.width, parms.height);
+        
+        const base64Image = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Enviar para API
+        loader.style.display = 'block';
+        outputText.innerText = 'Lendo área selecionada...';
+        btnAction.disabled = true;
+
+        const fd = new FormData();
+        fd.append('apikey', 'K86822256088957');
+        fd.append('base64Image', base64Image);
+        fd.append('language', 'por');
+        fd.append('OCREngine', '2'); // Engine 2 é melhor para números e códigos
+
+        try {
+            const resp = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
+            const json = await resp.json();
+            const text = json.ParsedResults[0].ParsedText;
+            outputText.innerText = text.trim() || "Não detectado. Tente ajustar o corte.";
+            btnCopy.style.display = text.trim() ? "block" : "none";
+        } catch (err) {
+            outputText.innerText = "Erro na rede.";
+        } finally {
+            loader.style.display = 'none';
+            btnAction.disabled = false;
+        }
+    });
+
+    btnCopy.addEventListener('click', () => {
+        navigator.clipboard.writeText(outputText.innerText);
+        btnCopy.innerText = "OK!";
+        setTimeout(() => btnCopy.innerText = "Copiar", 2000);
+    });
+</script>
+</body>
+</html>
