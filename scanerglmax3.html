@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLMax Scanner - Agilidade Detran-CE</title>
-    <link href="https://cdn.jsdelivr.net/gh/jamessouth/croppr.js@v2.3.0/dist/croppr.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/gh/jamessouth/croppr.js@v2.3.0/dist/croppr.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppr/2.3.1/croppr.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/croppr/2.3.1/croppr.min.js"></script>
     
     <style>
         :root { --primary: #2563eb; --success: #16a34a; --bg: #f1f5f9; --card: #ffffff; }
@@ -19,12 +20,15 @@
         .btn-scan { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
         .btn-copy { background: var(--success); color: white; width: auto; padding: 5px 15px; font-size: 0.8rem; }
         
-        .crop-container { width: 100%; min-height: 200px; background: #eee; border-radius: 8px; overflow: hidden; margin-bottom: 10px; position: relative; }
+        .crop-container { width: 100%; min-height: 200px; background: #ddd; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
         #image-to-crop { max-width: 100%; display: block; }
         
-        #result-box { background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: monospace; margin-top: 15px; position: relative; min-height: 60px; word-break: break-all; }
+        #result-box { background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: monospace; margin-top: 15px; min-height: 60px; word-break: break-all; position: relative; }
         .loader { display: none; border: 3px solid #333; border-top: 3px solid #0f0; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 10px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Ajuste para o seletor de crop aparecer melhor no mobile */
+        .croppr-container { margin: 0 auto; }
     </style>
 </head>
 <body>
@@ -40,7 +44,7 @@
     <input type="file" id="fileIn" hidden accept="image/*">
     <input type="file" id="camIn" hidden accept="image/*" capture="environment">
 
-    <div class="crop-container">
+    <div class="crop-container" id="cropWrapper">
         <img id="image-to-crop" src="" alt="">
     </div>
 
@@ -64,20 +68,35 @@
     const loader = document.getElementById('loader');
     const btnCopy = document.getElementById('btnCopy');
 
+    // Função para inicializar o crop com segurança
     function initCrop(src) {
-        if (cropprInstance) { cropprInstance.destroy(); }
-        imgElement.src = src;
-        imgElement.onload = () => {
+        if (typeof Croppr === 'undefined') {
+            alert("Aguarde um segundo, a ferramenta de recorte ainda está carregando...");
+            return;
+        }
+
+        // Se já existir uma instância, destrói e limpa o HTML para não duplicar
+        if (cropprInstance) {
+            cropprInstance.destroy();
+            const wrapper = document.getElementById('cropWrapper');
+            wrapper.innerHTML = '<img id="image-to-crop" src="" alt="">';
+        }
+
+        const newImg = document.getElementById('image-to-crop');
+        newImg.src = src;
+        
+        newImg.onload = () => {
             cropprInstance = new Croppr('#image-to-crop', {
-                aspectRatio: null, // Livre para qualquer formato (placa ou chassi)
+                aspectRatio: null,
                 onInitialize: (instance) => {
                     btnAction.disabled = false;
-                    btnAction.innerText = "2. Extrair Texto da Área";
+                    btnAction.innerText = "2. Extrair Texto Selecionado";
                 }
             });
         };
     }
 
+    // Ouvintes para os inputs de imagem
     [document.getElementById('fileIn'), document.getElementById('camIn')].forEach(input => {
         input.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -89,37 +108,46 @@
         });
     });
 
+    // Ação de extrair texto
     btnAction.addEventListener('click', async () => {
+        if (!cropprInstance) return;
+
         const parms = cropprInstance.getValue();
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Cortar a imagem baseada na seleção
+        // Usamos a imagem original para manter a qualidade no corte
+        const originalImg = document.getElementById('image-to-crop');
+        
         canvas.width = parms.width;
         canvas.height = parms.height;
-        ctx.drawImage(imgElement, parms.x, parms.y, parms.width, parms.height, 0, 0, parms.width, parms.height);
+        ctx.drawImage(originalImg, parms.x, parms.y, parms.width, parms.height, 0, 0, parms.width, parms.height);
         
         const base64Image = canvas.toDataURL('image/jpeg', 0.9);
         
-        // Enviar para API
         loader.style.display = 'block';
-        outputText.innerText = 'Lendo área selecionada...';
+        outputText.innerText = 'Lendo área...';
         btnAction.disabled = true;
 
         const fd = new FormData();
         fd.append('apikey', 'K86822256088957');
         fd.append('base64Image', base64Image);
         fd.append('language', 'por');
-        fd.append('OCREngine', '2'); // Engine 2 é melhor para números e códigos
+        fd.append('OCREngine', '2'); 
 
         try {
             const resp = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
             const json = await resp.json();
-            const text = json.ParsedResults[0].ParsedText;
-            outputText.innerText = text.trim() || "Não detectado. Tente ajustar o corte.";
-            btnCopy.style.display = text.trim() ? "block" : "none";
+            
+            if(json.ParsedResults && json.ParsedResults.length > 0) {
+                const text = json.ParsedResults[0].ParsedText;
+                outputText.innerText = text.trim() || "Não detectado. Ajuste o corte.";
+                btnCopy.style.display = text.trim() ? "block" : "none";
+            } else {
+                outputText.innerText = "Erro: " + (json.ErrorMessage || "Servidor não respondeu.");
+            }
         } catch (err) {
-            outputText.innerText = "Erro na rede.";
+            outputText.innerText = "Erro de conexão.";
         } finally {
             loader.style.display = 'none';
             btnAction.disabled = false;
