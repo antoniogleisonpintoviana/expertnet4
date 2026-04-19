@@ -3,63 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GLMax Scanner PRO - Precisão</title>
+    <title>GLMax Scanner - Estável</title>
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --bg: #1a1a1a; --control-bg: #333; }
-        body { font-family: sans-serif; background: #0a0a0a; color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; box-sizing: border-box; }
+        :root { --primary: #2563eb; --success: #16a34a; --bg: #000; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 450px; }
         
         /* Área da Foto */
         .viewport { 
             position: relative; 
             width: 100%; 
-            height: 380px; /* Um pouco mais alto para dar espaço ao zoom */
-            background: #222; 
+            height: 350px; 
+            background: #333; 
             overflow: hidden; 
             border-radius: 8px; 
             margin-bottom: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            border: 2px solid #333;
         }
-        
-        #img-view { 
-            position: absolute; 
-            display: none; /* Escondido até carregar imagem */
-            transform-origin: 0 0; /* Base do transform no topo esquerdo para calculo preciso */
-        }
+        #img-view { max-width: 100%; position: absolute; }
 
-        /* O Quadrado de Recorte Manual - SUPER SLIM PARA RENAVAM/PLACA */
+        /* O Quadrado de Recorte Manual */
         #crop-box {
             position: absolute;
-            width: 250px; /* Mais largo */
-            height: 35px;  /* BEM MAIS BAIXO - ULTRA SLIM */
-            border: 2px solid #0f0; /* Verde Limão */
-            box-shadow: 0 0 0 4000px rgba(0,0,0,0.8); /* Escurece bem o que está fora */
+            width: 200px;
+            height: 80px;
+            border: 2px solid #0f0;
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); /* Escurece o que está fora */
             z-index: 10;
             display: none;
             touch-action: none;
-            pointer-events: none; /* Para não atrapalhar o toque na imagem */
         }
 
-        /* Controles */
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        button { border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; font-size: 0.9rem;}
+        button { border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-blue { background: var(--primary); color: white; width: 100%; }
-        .btn-blue:active { background-color: #1d4ed8; }
-        .btn-gray { background: var(--control-bg); color: white; }
+        .btn-gray { background: #555; color: white; }
         
-        /* Resultado */
-        #result-box { margin-top:15px; background: #000; border: 1px solid #333; border-radius: 8px; padding: 15px; }
-        #result { color: #0f0; font-family: monospace; font-size: 1rem; min-height: 40px; word-break: break-all; margin-top: 5px;}
+        #result { background: #000; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; min-height: 50px; border: 1px solid #333; }
         .instrucao { font-size: 0.8rem; color: #aaa; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center; color:white; margin:10px 0 20px 0; font-weight:lighter;">GLMax <span style="font-weight:bold;color:var(--primary);">OCR PRECISION</span></h2>
+    <h2 style="text-align:center; color:var(--primary);">GLMax OCR PRO</h2>
     
     <div class="controls">
         <button class="btn-gray" onclick="document.getElementById('camIn').click()">Câmera</button>
@@ -69,19 +58,19 @@
     <input type="file" id="fileIn" hidden accept="image/*">
     <input type="file" id="camIn" hidden accept="image/*" capture="environment">
 
-    <p class="instrucao">Ajuste a foto. Deixe SOMENTE o número dentro da linha verde fina.</p>
+    <p class="instrucao">Arraste a foto para posicionar o texto dentro do retângulo verde</p>
 
     <div class="viewport" id="area">
         <div id="crop-box"></div>
         <img id="img-view" src="" alt="">
     </div>
 
-    <button id="btnScan" class="btn-blue" style="margin-top:10px; padding: 20px; font-size: 1.1rem;">EXTRAIR DO VERDE</button>
+    <button id="btnScan" class="btn-blue" style="margin-top:10px;">EXTRAIR TEXTO DO VERDE</button>
 
-    <div id="result-box">
-        <div style="display:flex; justify-content:space-between; align-items: center;">
-            <span style="font-size:0.7rem; color:#888;">NÚMERO DETECTADO:</span>
-            <button onclick="copyText()" id="btnCopy" style="background:var(--success); color:white; padding:5px 15px; font-size:0.8rem; border-radius:4px; border:none; display:none; cursor:pointer;">COPIAR</button>
+    <div style="margin-top:15px;">
+        <div style="display:flex; justify-content:space-between;">
+            <span style="font-size:0.7rem;">RESULTADO:</span>
+            <button onclick="copyText()" id="btnCopy" style="background:var(--success); color:white; padding:2px 10px; font-size:0.7rem; display:none;">COPIAR</button>
         </div>
         <div id="result">Aguardando imagem...</div>
     </div>
@@ -92,36 +81,28 @@
     const box = document.getElementById('crop-box');
     const result = document.getElementById('result');
     const btnScan = document.getElementById('btnScan');
-    const API_KEY = 'K86822256088957'; // Mantive sua chave
-    const ZOOM_FACTOR = 1.3; // Aplica um zoom de 30% automaticamente ao carregar
 
     // Movimentação da Imagem (Touch/Arraste)
     let isDragging = false;
     let startX, startY, currentX = 0, currentY = 0;
 
     function handleStart(e) {
-        if (!img.src) return;
         isDragging = true;
-        area.style.cursor = 'grabbing';
         const touch = e.type === 'touchstart' ? e.touches[0] : e;
         startX = touch.clientX - currentX;
         startY = touch.clientY - currentY;
     }
 
     function handleMove(e) {
-        if (!isDragging || !img.src) return;
+        if (!isDragging) return;
         e.preventDefault();
         const touch = e.type === 'touchmove' ? e.touches[0] : e;
         currentX = touch.clientX - startX;
         currentY = touch.clientY - startY;
-        // Aplica o movimento + o Zoom automático
-        img.style.transform = `translate(${currentX}px, ${currentY}px) scale(${ZOOM_FACTOR})`;
+        img.style.transform = `translate(${currentX}px, ${currentY}px)`;
     }
 
-    function handleEnd() { 
-        isDragging = false; 
-        area.style.cursor = 'grab';
-    }
+    function handleEnd() { isDragging = false; }
 
     const area = document.getElementById('area');
     area.addEventListener('mousedown', handleStart);
@@ -139,16 +120,10 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     img.src = ev.target.result;
-                    img.onload = () => {
-                        // Reseta posição e exibe com Zoom automático
-                        img.style.display = 'block';
-                        box.style.display = 'block';
-                        currentX = 0; currentY = 0;
-                        img.style.transform = `translate(0,0) scale(${ZOOM_FACTOR})`;
-                        result.innerText = "Alinhe o número EXATAMENTE na mira verde fina.";
-                        result.style.color = '#888';
-                        document.getElementById('btnCopy').style.display = 'none';
-                    }
+                    box.style.display = 'block';
+                    currentX = 0; currentY = 0;
+                    img.style.transform = `translate(0,0)`;
+                    result.innerText = "Posicione o Renavam/Placa no verde";
                 };
                 reader.readAsDataURL(file);
             }
@@ -157,70 +132,48 @@
 
     // Extrair Texto
     btnScan.addEventListener('click', async () => {
-        if (!img.src) return;
+        if (!img.src) return alert("Selecione uma imagem!");
         
-        result.innerText = "Lendo área selecionada...";
-        result.style.color = '#fff';
+        result.innerText = "Lendo...";
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // CÁLCULO DE RECORTE ULTRA PRECISO
-        // É necessário considerar a escala natural da imagem e o zoom aplicado pelo CSS
-        const visualScale = img.naturalWidth / img.clientWidth;
-        const totalScale = visualScale / ZOOM_FACTOR;
-        
+        // Calculamos o recorte baseado no que está dentro do retângulo verde
+        const scale = img.naturalWidth / img.clientWidth;
         const boxRect = box.getBoundingClientRect();
         const imgRect = img.getBoundingClientRect();
 
-        const sx = (boxRect.left - imgRect.left) * totalScale;
-        const sy = (boxRect.top - imgRect.top) * totalScale;
-        const sw = boxRect.width * totalScale;
-        const sh = boxRect.height * totalScale;
+        const sx = (boxRect.left - imgRect.left) * scale;
+        const sy = (boxRect.top - imgRect.top) * scale;
+        const sw = boxRect.width * scale;
+        const sh = boxRect.height * scale;
 
-        // Cria canvas com o tamanho exato do recorte em alta definição
         canvas.width = sw;
         canvas.height = sh;
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
-        const base64 = canvas.toDataURL('image/jpeg', 0.85); // Mantém boa qualidade
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
         
         const fd = new FormData();
-        fd.append('apikey', API_KEY);
+        fd.append('apikey', 'K86822256088957');
         fd.append('base64Image', base64);
         fd.append('language', 'por');
-        fd.append('OCREngine', '2'); // Engine 2 é melhor para códigos
+        fd.append('OCREngine', '2');
 
         try {
             const resp = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
             const data = await resp.json();
-            
-            if(data.OCRExitCode === 1) {
-                const text = data.ParsedResults[0].ParsedText.trim();
-                result.innerText = text || "(Não detectado. Tente alinhar melhor.)";
-                result.style.color = text ? '#0f0' : '#888'; // Verde se leu, cinza se não
-                document.getElementById('btnCopy').style.display = text ? 'block' : 'none';
-            } else {
-                result.innerText = "Erro do servidor: " + data.ErrorMessage;
-                result.style.color = 'red';
-            }
+            const text = data.ParsedResults[0].ParsedText;
+            result.innerText = text.trim() || "Não lido. Tente centralizar melhor.";
+            document.getElementById('btnCopy').style.display = text.trim() ? 'block' : 'none';
         } catch (e) {
-            result.innerText = "Erro na conexão. Verifique a internet.";
-            result.style.color = 'red';
+            result.innerText = "Erro na conexão.";
         }
     });
 
     function copyText() {
         navigator.clipboard.writeText(result.innerText);
-        const copyBtn = document.getElementById('btnCopy');
-        const oldText = copyBtn.innerText;
-        copyBtn.innerText = "COPIADO";
-        copyBtn.style.background = "#fff";
-        copyBtn.style.color = "#000";
-        setTimeout(() => {
-            copyBtn.innerText = oldText;
-            copyBtn.style.background = ""; // Restaura do CSS
-            copyBtn.style.color = "";
-        }, 1500);
+        alert("Copiado!");
     }
 </script>
 </body>
