@@ -2,163 +2,179 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLMax Scanner - Agilidade Detran-CE</title>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppr/2.3.1/croppr.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/croppr/2.3.1/croppr.min.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GLMax Scanner - Estável</title>
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --bg: #f1f5f9; --card: #ffffff; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: var(--card); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; box-sizing: border-box; }
-        h1 { font-size: 1.2rem; color: var(--primary); text-align: center; margin-top: 0; }
+        :root { --primary: #2563eb; --success: #16a34a; --bg: #000; }
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 450px; }
         
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-        button { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
-        .btn-sel { background: #64748b; color: white; }
-        .btn-scan { background: var(--primary); color: white; width: 100%; margin-top: 10px; }
-        .btn-copy { background: var(--success); color: white; width: auto; padding: 5px 15px; font-size: 0.8rem; }
-        
-        .crop-container { width: 100%; min-height: 200px; background: #ddd; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
-        #image-to-crop { max-width: 100%; display: block; }
-        
-        #result-box { background: #000; color: #0f0; padding: 15px; border-radius: 6px; font-family: monospace; margin-top: 15px; min-height: 60px; word-break: break-all; position: relative; }
-        .loader { display: none; border: 3px solid #333; border-top: 3px solid #0f0; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 10px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Área da Foto */
+        .viewport { 
+            position: relative; 
+            width: 100%; 
+            height: 350px; 
+            background: #333; 
+            overflow: hidden; 
+            border-radius: 8px; 
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #img-view { max-width: 100%; position: absolute; }
 
-        /* Ajuste para o seletor de crop aparecer melhor no mobile */
-        .croppr-container { margin: 0 auto; }
+        /* O Quadrado de Recorte Manual */
+        #crop-box {
+            position: absolute;
+            width: 200px;
+            height: 80px;
+            border: 2px solid #0f0;
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); /* Escurece o que está fora */
+            z-index: 10;
+            display: none;
+            touch-action: none;
+        }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        button { border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-blue { background: var(--primary); color: white; width: 100%; }
+        .btn-gray { background: #555; color: white; }
+        
+        #result { background: #000; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; min-height: 50px; border: 1px solid #333; }
+        .instrucao { font-size: 0.8rem; color: #aaa; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>GLMax - Extrator de Dados</h1>
+    <h2 style="text-align:center; color:var(--primary);">GLMax OCR PRO</h2>
     
-    <div class="btn-group">
-        <button class="btn-sel" onclick="document.getElementById('fileIn').click()">Galeria</button>
-        <button class="btn-sel" onclick="document.getElementById('camIn').click()">Câmera</button>
+    <div class="controls">
+        <button class="btn-gray" onclick="document.getElementById('camIn').click()">Câmera</button>
+        <button class="btn-gray" onclick="document.getElementById('fileIn').click()">Galeria</button>
     </div>
 
     <input type="file" id="fileIn" hidden accept="image/*">
     <input type="file" id="camIn" hidden accept="image/*" capture="environment">
 
-    <div class="crop-container" id="cropWrapper">
-        <img id="image-to-crop" src="" alt="">
+    <p class="instrucao">Arraste a foto para posicionar o texto dentro do retângulo verde</p>
+
+    <div class="viewport" id="area">
+        <div id="crop-box"></div>
+        <img id="img-view" src="" alt="">
     </div>
 
-    <button id="btnAction" class="btn-scan" disabled>1. Selecione a Imagem</button>
+    <button id="btnScan" class="btn-blue" style="margin-top:10px;">EXTRAIR TEXTO DO VERDE</button>
 
-    <div id="result-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <small style="color: #888;">RESULTADO:</small>
-            <button id="btnCopy" class="btn-success" style="display:none">Copiar</button>
+    <div style="margin-top:15px;">
+        <div style="display:flex; justify-content:space-between;">
+            <span style="font-size:0.7rem;">RESULTADO:</span>
+            <button onclick="copyText()" id="btnCopy" style="background:var(--success); color:white; padding:2px 10px; font-size:0.7rem; display:none;">COPIAR</button>
         </div>
-        <div id="loader" class="loader"></div>
-        <div id="outputText">Aguardando recorte...</div>
+        <div id="result">Aguardando imagem...</div>
     </div>
 </div>
 
 <script>
-    let cropprInstance = null;
-    const imgElement = document.getElementById('image-to-crop');
-    const btnAction = document.getElementById('btnAction');
-    const outputText = document.getElementById('outputText');
-    const loader = document.getElementById('loader');
-    const btnCopy = document.getElementById('btnCopy');
+    const img = document.getElementById('img-view');
+    const box = document.getElementById('crop-box');
+    const result = document.getElementById('result');
+    const btnScan = document.getElementById('btnScan');
 
-    // Função para inicializar o crop com segurança
-    function initCrop(src) {
-        if (typeof Croppr === 'undefined') {
-            alert("Aguarde um segundo, a ferramenta de recorte ainda está carregando...");
-            return;
-        }
+    // Movimentação da Imagem (Touch/Arraste)
+    let isDragging = false;
+    let startX, startY, currentX = 0, currentY = 0;
 
-        // Se já existir uma instância, destrói e limpa o HTML para não duplicar
-        if (cropprInstance) {
-            cropprInstance.destroy();
-            const wrapper = document.getElementById('cropWrapper');
-            wrapper.innerHTML = '<img id="image-to-crop" src="" alt="">';
-        }
-
-        const newImg = document.getElementById('image-to-crop');
-        newImg.src = src;
-        
-        newImg.onload = () => {
-            cropprInstance = new Croppr('#image-to-crop', {
-                aspectRatio: null,
-                onInitialize: (instance) => {
-                    btnAction.disabled = false;
-                    btnAction.innerText = "2. Extrair Texto Selecionado";
-                }
-            });
-        };
+    function handleStart(e) {
+        isDragging = true;
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        startX = touch.clientX - currentX;
+        startY = touch.clientY - currentY;
     }
 
-    // Ouvintes para os inputs de imagem
+    function handleMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const touch = e.type === 'touchmove' ? e.touches[0] : e;
+        currentX = touch.clientX - startX;
+        currentY = touch.clientY - startY;
+        img.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+
+    function handleEnd() { isDragging = false; }
+
+    const area = document.getElementById('area');
+    area.addEventListener('mousedown', handleStart);
+    area.addEventListener('touchstart', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
+
+    // Carregar Imagem
     [document.getElementById('fileIn'), document.getElementById('camIn')].forEach(input => {
         input.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (event) => initCrop(event.target.result);
+                reader.onload = (ev) => {
+                    img.src = ev.target.result;
+                    box.style.display = 'block';
+                    currentX = 0; currentY = 0;
+                    img.style.transform = `translate(0,0)`;
+                    result.innerText = "Posicione o Renavam/Placa no verde";
+                };
                 reader.readAsDataURL(file);
             }
         });
     });
 
-    // Ação de extrair texto
-    btnAction.addEventListener('click', async () => {
-        if (!cropprInstance) return;
-
-        const parms = cropprInstance.getValue();
+    // Extrair Texto
+    btnScan.addEventListener('click', async () => {
+        if (!img.src) return alert("Selecione uma imagem!");
+        
+        result.innerText = "Lendo...";
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        // Usamos a imagem original para manter a qualidade no corte
-        const originalImg = document.getElementById('image-to-crop');
-        
-        canvas.width = parms.width;
-        canvas.height = parms.height;
-        ctx.drawImage(originalImg, parms.x, parms.y, parms.width, parms.height, 0, 0, parms.width, parms.height);
-        
-        const base64Image = canvas.toDataURL('image/jpeg', 0.9);
-        
-        loader.style.display = 'block';
-        outputText.innerText = 'Lendo área...';
-        btnAction.disabled = true;
+        // Calculamos o recorte baseado no que está dentro do retângulo verde
+        const scale = img.naturalWidth / img.clientWidth;
+        const boxRect = box.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
 
+        const sx = (boxRect.left - imgRect.left) * scale;
+        const sy = (boxRect.top - imgRect.top) * scale;
+        const sw = boxRect.width * scale;
+        const sh = boxRect.height * scale;
+
+        canvas.width = sw;
+        canvas.height = sh;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        
         const fd = new FormData();
         fd.append('apikey', 'K86822256088957');
-        fd.append('base64Image', base64Image);
+        fd.append('base64Image', base64);
         fd.append('language', 'por');
-        fd.append('OCREngine', '2'); 
+        fd.append('OCREngine', '2');
 
         try {
             const resp = await fetch('https://api.ocr.space/parse/image', { method: 'POST', body: fd });
-            const json = await resp.json();
-            
-            if(json.ParsedResults && json.ParsedResults.length > 0) {
-                const text = json.ParsedResults[0].ParsedText;
-                outputText.innerText = text.trim() || "Não detectado. Ajuste o corte.";
-                btnCopy.style.display = text.trim() ? "block" : "none";
-            } else {
-                outputText.innerText = "Erro: " + (json.ErrorMessage || "Servidor não respondeu.");
-            }
-        } catch (err) {
-            outputText.innerText = "Erro de conexão.";
-        } finally {
-            loader.style.display = 'none';
-            btnAction.disabled = false;
+            const data = await resp.json();
+            const text = data.ParsedResults[0].ParsedText;
+            result.innerText = text.trim() || "Não lido. Tente centralizar melhor.";
+            document.getElementById('btnCopy').style.display = text.trim() ? 'block' : 'none';
+        } catch (e) {
+            result.innerText = "Erro na conexão.";
         }
     });
 
-    btnCopy.addEventListener('click', () => {
-        navigator.clipboard.writeText(outputText.innerText);
-        btnCopy.innerText = "OK!";
-        setTimeout(() => btnCopy.innerText = "Copiar", 2000);
-    });
+    function copyText() {
+        navigator.clipboard.writeText(result.innerText);
+        alert("Copiado!");
+    }
 </script>
 </body>
 </html>
