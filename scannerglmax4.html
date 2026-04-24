@@ -10,75 +10,38 @@
         :root { --primary: #2563eb; --success: #16a34a; --bg: #000; }
         body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 450px; }
-        
-        .viewport { 
-            position: relative; 
-            width: 100%; 
-            height: 350px; 
-            background: #333; 
-            overflow: hidden; 
-            border-radius: 8px; 
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            touch-action: none;
-        }
+        .viewport { position: relative; width: 100%; height: 350px; background: #333; overflow: hidden; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; touch-action: none; }
         #img-view { max-width: 100%; position: absolute; cursor: move; transition: transform 0.1s ease-out; }
-
-        #crop-box {
-            position: absolute;
-            width: 200px;
-            height: 80px;
-            border: 2px solid #0f0;
-            box-shadow: 0 0 0 4000px rgba(0,0,0,0.6);
-            z-index: 10;
-            display: none;
-            pointer-events: none; 
-        }
-
+        #crop-box { position: absolute; width: 200px; height: 80px; border: 2px solid #0f0; box-shadow: 0 0 0 4000px rgba(0,0,0,0.6); z-index: 10; display: none; pointer-events: none; }
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        button { border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        button { border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-blue { background: var(--primary); color: white; width: 100%; }
         .btn-gray { background: #555; color: white; }
-        
         #result { background: #000; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; min-height: 50px; border: 1px solid #333; word-break: break-all; white-space: pre-wrap; font-size: 1.1rem; }
         .instrucao { font-size: 0.75rem; color: #aaa; text-align: center; margin-bottom: 10px; }
-        
         #progress-container { width: 100%; background: #333; height: 4px; border-radius: 2px; margin-bottom: 10px; display: none; overflow: hidden; }
         #progress-bar { width: 100%; height: 100%; background: var(--primary); animation: loading 2s infinite linear; }
-        
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
+        @keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2 style="text-align:center; color:var(--primary);">GLMax OCR IA (Python)</h2>
-    
     <div class="controls">
         <button class="btn-gray" onclick="document.getElementById('camIn').click()">Câmera</button>
         <button class="btn-gray" onclick="document.getElementById('fileIn').click()">Galeria</button>
     </div>
-
     <input type="file" id="fileIn" hidden accept="image/*">
     <input type="file" id="camIn" hidden accept="image/*" capture="environment">
-
-    <p class="instrucao">Arraste a foto e ajuste o quadro verde (setas no PC)</p>
-
+    <p class="instrucao">Ajuste o texto no quadro verde (setas no PC)</p>
     <div class="viewport" id="area">
         <div id="crop-box"></div>
         <img id="img-view" src="" alt="">
     </div>
-    
     <div id="progress-container"><div id="progress-bar"></div></div>
-
     <button id="btnScan" class="btn-blue">EXTRAIR TEXTO COM IA</button>
-
     <div style="margin-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px;">
             <span style="font-size:0.7rem;">RESULTADO:</span>
@@ -89,9 +52,7 @@
 </div>
 
 <script>
-    // --- CONFIGURAÇÃO DA IA ---
     const HF_TOKEN = "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"; 
-
     const img = document.getElementById('img-view');
     const box = document.getElementById('crop-box');
     const result = document.getElementById('result');
@@ -101,7 +62,6 @@
     let isDragging = false;
     let startX, startY, currentX = 0, currentY = 0;
 
-    // --- LÓGICA DE MOVIMENTAÇÃO ---
     function handleStart(e) {
         if(!img.src) return;
         isDragging = true;
@@ -127,9 +87,79 @@
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchend', handleEnd);
 
-    // --- AJUSTE COM SETAS ---
     window.addEventListener('keydown', (e) => {
         if (!img.src) return;
         let w = box.offsetWidth;
         let h = box.offsetHeight;
         if (e.key === 'ArrowUp') { box.style.height = (h + 10) + 'px'; e.preventDefault(); }
+        if (e.key === 'ArrowDown') { box.style.height = Math.max(20, h - 10) + 'px'; e.preventDefault(); }
+        if (e.key === 'ArrowRight') { box.style.width = (w + 10) + 'px'; e.preventDefault(); }
+        if (e.key === 'ArrowLeft') { box.style.width = Math.max(20, w - 10) + 'px'; e.preventDefault(); }
+    });
+
+    [document.getElementById('fileIn'), document.getElementById('camIn')].forEach(input => {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    img.src = ev.target.result;
+                    box.style.display = 'block';
+                    currentX = 0; currentY = 0;
+                    img.style.transform = `translate(0,0)`;
+                    result.innerText = "Imagem carregada. Ajuste e Extraia.";
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    btnScan.addEventListener('click', async () => {
+        if (!img.src) return alert("Selecione uma imagem!");
+        btnScan.disabled = true;
+        btnScan.innerText = "IA PROCESSANDO...";
+        progressContainer.style.display = 'block';
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const scale = img.naturalWidth / img.clientWidth;
+        const boxRect = box.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+
+        canvas.width = boxRect.width * scale;
+        canvas.height = boxRect.height * scale;
+        ctx.drawImage(img, (boxRect.left - imgRect.left) * scale, (boxRect.top - imgRect.top) * scale, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(async (blob) => {
+            try {
+                const response = await fetch("https://api-inference.huggingface.co/models/microsoft/trocr-large-printed", {
+                    headers: { "Authorization": `Bearer ${HF_TOKEN}`, "Content-Type": "application/octet-stream" },
+                    method: "POST",
+                    body: blob,
+                });
+                const data = await response.json();
+                if (data[0] && data[0].generated_text) {
+                    result.innerText = data[0].generated_text.trim();
+                    document.getElementById('btnCopy').style.display = 'block';
+                } else if (data.error) {
+                    result.innerText = "IA carregando... Tente novamente em 20s.";
+                } else {
+                    result.innerText = "Não foi possível ler o texto.";
+                }
+            } catch (error) {
+                result.innerText = "Erro de conexão com a IA.";
+            } finally {
+                btnScan.disabled = false;
+                btnScan.innerText = "EXTRAIR TEXTO COM IA";
+                progressContainer.style.display = 'none';
+            }
+        }, 'image/jpeg');
+    });
+
+    function copyText() {
+        navigator.clipboard.writeText(result.innerText);
+        alert("Copiado!");
+    }
+</script>
+</body>
+</html>
