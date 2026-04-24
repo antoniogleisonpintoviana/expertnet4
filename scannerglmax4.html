@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GLMax Scanner - IA PRO</title>
+    <title>GLMax Scanner - Google Vision PRO</title>
     <link rel="icon" type="image/png" href="favicon.png">
     
     <style>
@@ -28,20 +28,27 @@
 <body>
 
 <div class="container">
-    <h2 style="text-align:center; color:var(--primary);">GLMax OCR IA (Python)</h2>
+    <h2 style="text-align:center; color:var(--primary);">GLMax OCR (Google Vision)</h2>
+    
     <div class="controls">
         <button class="btn-gray" onclick="document.getElementById('camIn').click()">Câmera</button>
         <button class="btn-gray" onclick="document.getElementById('fileIn').click()">Galeria</button>
     </div>
+
     <input type="file" id="fileIn" hidden accept="image/*">
     <input type="file" id="camIn" hidden accept="image/*" capture="environment">
-    <p class="instrucao">Ajuste o texto no quadro verde (setas no PC)</p>
+
+    <p class="instrucao">Posicione o texto dentro do quadro verde</p>
+
     <div class="viewport" id="area">
         <div id="crop-box"></div>
         <img id="img-view" src="" alt="">
     </div>
+    
     <div id="progress-container"><div id="progress-bar"></div></div>
-    <button id="btnScan" class="btn-blue">EXTRAIR TEXTO COM IA</button>
+
+    <button id="btnScan" class="btn-blue">EXTRAIR COM GOOGLE LENS</button>
+
     <div style="margin-top:15px;">
         <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px;">
             <span style="font-size:0.7rem;">RESULTADO:</span>
@@ -52,7 +59,9 @@
 </div>
 
 <script>
-    const HF_TOKEN = "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"; 
+    // --- SUA CHAVE GOOGLE CLOUD ---
+    const GOOGLE_API_KEY = "AIzaSyCSA6b98dcd5XsG8WgfcTmLVWuMGefihWs"; 
+
     const img = document.getElementById('img-view');
     const box = document.getElementById('crop-box');
     const result = document.getElementById('result');
@@ -62,6 +71,7 @@
     let isDragging = false;
     let startX, startY, currentX = 0, currentY = 0;
 
+    // Movimentação da imagem
     function handleStart(e) {
         if(!img.src) return;
         isDragging = true;
@@ -87,6 +97,7 @@
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchend', handleEnd);
 
+    // Ajuste do quadro verde com setas
     window.addEventListener('keydown', (e) => {
         if (!img.src) return;
         let w = box.offsetWidth;
@@ -97,6 +108,7 @@
         if (e.key === 'ArrowLeft') { box.style.width = Math.max(20, w - 10) + 'px'; e.preventDefault(); }
     });
 
+    // Carregar imagem
     [document.getElementById('fileIn'), document.getElementById('camIn')].forEach(input => {
         input.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -114,10 +126,12 @@
         });
     });
 
+    // Extração usando Google Cloud Vision
     btnScan.addEventListener('click', async () => {
         if (!img.src) return alert("Selecione uma imagem!");
+        
         btnScan.disabled = true;
-        btnScan.innerText = "IA PROCESSANDO...";
+        btnScan.innerText = "GOOGLE ANALISANDO...";
         progressContainer.style.display = 'block';
 
         const canvas = document.createElement('canvas');
@@ -128,37 +142,52 @@
 
         canvas.width = boxRect.width * scale;
         canvas.height = boxRect.height * scale;
-        ctx.drawImage(img, (boxRect.left - imgRect.left) * scale, (boxRect.top - imgRect.top) * scale, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+        
+        ctx.drawImage(img, 
+            (boxRect.left - imgRect.left) * scale, 
+            (boxRect.top - imgRect.top) * scale, 
+            canvas.width, canvas.height, 
+            0, 0, canvas.width, canvas.height
+        );
 
-        canvas.toBlob(async (blob) => {
-            try {
-                const response = await fetch("https://api-inference.huggingface.co/models/microsoft/trocr-large-printed", {
-                    headers: { "Authorization": `Bearer ${HF_TOKEN}`, "Content-Type": "application/octet-stream" },
-                    method: "POST",
-                    body: blob,
-                });
-                const data = await response.json();
-                if (data[0] && data[0].generated_text) {
-                    result.innerText = data[0].generated_text.trim();
-                    document.getElementById('btnCopy').style.display = 'block';
-                } else if (data.error) {
-                    result.innerText = "IA carregando... Tente novamente em 20s.";
-                } else {
-                    result.innerText = "Não foi possível ler o texto.";
-                }
-            } catch (error) {
-                result.innerText = "Erro de conexão com a IA.";
-            } finally {
-                btnScan.disabled = false;
-                btnScan.innerText = "EXTRAIR TEXTO COM IA";
-                progressContainer.style.display = 'none';
+        // Converte o recorte para Base64 para o Google
+        const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+
+        const requestBody = {
+            requests: [{
+                image: { content: base64Image },
+                features: [{ type: "TEXT_DETECTION" }]
+            }]
+        };
+
+        try {
+            const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+
+            if (data.responses && data.responses[0].fullTextAnnotation) {
+                result.innerText = data.responses[0].fullTextAnnotation.text;
+                document.getElementById('btnCopy').style.display = 'block';
+            } else {
+                result.innerText = "Google não encontrou texto claro no recorte.";
             }
-        }, 'image/jpeg');
+        } catch (error) {
+            console.error(error);
+            result.innerText = "Erro ao conectar com o Google. Verifique sua chave.";
+        } finally {
+            btnScan.disabled = false;
+            btnScan.innerText = "EXTRAIR COM GOOGLE LENS";
+            progressContainer.style.display = 'none';
+        }
     });
 
     function copyText() {
         navigator.clipboard.writeText(result.innerText);
-        alert("Copiado!");
+        alert("Texto copiado!");
     }
 </script>
 </body>
