@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Foto 3x4</title>
+    <title>GLMax 3x4 Pro - Versão Econômica</title>
     <style>
         :root { --primary: #0566B1; }
         body { font-family: sans-serif; text-align: center; background: #f2f2f2; margin: 0; padding: 10px; overflow-x: hidden; }
@@ -17,21 +17,20 @@
         #loading { display: none; color: #0566B1; font-weight: bold; padding: 10px; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         .teclado-info { font-size: 10px; color: #888; margin-bottom: 10px; }
+        #saldo-api { font-size: 12px; color: #d9534f; font-weight: bold; margin-bottom: 10px; min-height: 15px; }
         #canvas-grade { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; background: #fff; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="margin-top:0; color:#333;">Foto 3x4</h2>
+    <h2 style="margin-top:0; color:#333;">GLMax 3x4 Profissional</h2>
     <div class="teclado-info"><b>Setas</b>: Mover | <b>+ / -</b>: Zoom</div>
     
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
     <div id="loading">🚀 IA EM AÇÃO... AGUARDE</div>
-<div id="saldo-api" style="font-size: 11px; color: #666; margin-top: 5px;"></div>
-    
-    <div class="canvas-wrapper">
+    <div id="saldo-api"></div> <div class="canvas-wrapper">
         <canvas id="canvas" width="354" height="472"></canvas>
         <div class="crop-mask"></div>
     </div>
@@ -104,69 +103,62 @@
     function ajustarZoom(f) { zoom *= f; desenhar(); }
     function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
-   async function removerFundoAPI() {
-    if (!imgInput.src) return alert("Selecione uma foto!");
-    const loader = document.getElementById("loading");
-    const btn = document.getElementById("btnBg");
-    const saldoTxt = document.getElementById("saldo-api"); // Onde vamos escrever o saldo
-    
-    loader.style.display = "block";
-    btn.disabled = true;
-
-    try {
-        const res = await fetch(imgInput.src);
-        const blob = await res.blob();
-        const formData = new FormData();
-        formData.append("image_file", blob, "foto.png");
-        formData.append("size", "auto");
-
-        const response = await fetch("https://api.remove.bg/v1.0/removebg", {
-            method: "POST",
-            headers: { "X-Api-Key": apiKey },
-            body: formData
-        });
-
-        // --- AQUI ESTÁ O SEGREDO DO SALDO ---
-        // A API envia quanto falta nos cabeçalhos da resposta
-        const totalPermitido = response.headers.get("X-Credits-Limit"); // Geralmente 50
-        const usadoNoMes = response.headers.get("X-Credits-Usage");
+    async function removerFundoAPI() {
+        if (!imgInput.src) return alert("Selecione uma foto!");
+        const loader = document.getElementById("loading");
+        const btn = document.getElementById("btnBg");
+        const saldoTxt = document.getElementById("saldo-api");
         
-        if (totalPermitido && usadoNoMes) {
-            const restante = parseInt(totalPermitido) - parseInt(usadoNoMes);
-            saldoTxt.innerText = `Prévias Grátis Restantes: ${restante} de ${totalPermitido}`;
-        }
+        loader.style.display = "block";
+        btn.disabled = true;
 
-        if (response.ok) {
-            const resultBlob = await response.blob();
-            imgInput.src = URL.createObjectURL(resultBlob);
-            imgInput.onload = () => { 
-                desenhar(); 
+        try {
+            const res = await fetch(imgInput.src);
+            const blob = await res.blob();
+            const formData = new FormData();
+            formData.append("image_file", blob, "foto.png");
+            formData.append("size", "auto");
+
+            const response = await fetch("https://api.remove.bg/v1.0/removebg", {
+                method: "POST",
+                headers: { "X-Api-Key": apiKey },
+                body: formData
+            });
+
+            // Atualiza saldo baseado nos headers da resposta
+            const totalPermitido = response.headers.get("X-Credits-Limit");
+            const usadoNoMes = response.headers.get("X-Credits-Usage");
+            if (totalPermitido && usadoNoMes) {
+                const restante = parseInt(totalPermitido) - parseInt(usadoNoMes);
+                saldoTxt.innerText = `⚠️ Saldo API: ${restante} fotos restantes até a renovação`;
+            }
+
+            if (response.ok) {
+                const resultBlob = await response.blob();
+                imgInput.src = URL.createObjectURL(resultBlob);
+                imgInput.onload = () => { 
+                    desenhar(); 
+                    loader.style.display = "none";
+                    btn.disabled = false;
+                };
+            } else {
+                const erro = await response.json();
+                alert("Erro: " + erro.errors[0].title);
                 loader.style.display = "none";
                 btn.disabled = false;
-            };
-        } else {
-            const erro = await response.json();
-            alert("Erro: " + erro.errors[0].title);
+            }
+        } catch (e) {
+            alert("Falha na conexão.");
             loader.style.display = "none";
             btn.disabled = false;
         }
-    } catch (e) {
-        alert("Falha na conexão.");
-        loader.style.display = "none";
-        btn.disabled = false;
     }
-}
 
-    // ===== GERAR GRADE EM LINHA ÚNICA (PREVIEW) =====
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
-        
-        const fotoW = 354; 
-        const fotoH = 472;
-        const gap = 12; // Pequeno espaço entre as fotos no preview
+        const fotoW = 354, fotoH = 472, gap = 12;
 
-        // Canvas de preview largo o suficiente para 6 fotos lado a lado
         cGrade.width = (fotoW * 6) + (gap * 5) + 40;
         cGrade.height = fotoH + 40;
 
@@ -176,12 +168,8 @@
         for (let i = 0; i < 6; i++) {
             let x = 20 + i * (fotoW + gap);
             let y = 20;
-
             ctxG.drawImage(canvas, x, y, fotoW, fotoH);
-            
-            // Moldura cinza clara para o preview
             ctxG.strokeStyle = "#ddd";
-            ctxG.lineWidth = 1;
             ctxG.strokeRect(x, y, fotoW, fotoH);
         }
 
@@ -189,7 +177,6 @@
         document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
     }
 
-    // ===== BAIXAR PDF EM LINHA ÚNICA (3x4cm REAIS) =====
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
@@ -198,31 +185,21 @@
             format: "a4"
         });
 
-        const larguraFotoCm = 3;
-        const alturaFotoCm = 4;
-        const espaco = 0.1; 
-        const margemSuperior = 0.5;
-        const quantidade = 6;
-
-        // Centralizar a tira de 6 fotos (Largura A4 = 21cm)
-        const larguraTotal = (larguraFotoCm * quantidade) + (espaco * (quantidade - 1));
+        const larguraFotoCm = 3, alturaFotoCm = 4, espaco = 0.1, margemSuperior = 0.5;
+        const larguraTotal = (larguraFotoCm * 6) + (espaco * 5);
         const margemEsquerda = (21 - larguraTotal) / 2;
 
         const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
-        for (let i = 0; i < quantidade; i++) {
+        for (let i = 0; i < 6; i++) {
             let posX = margemEsquerda + (i * (larguraFotoCm + espaco));
-            let posY = margemSuperior;
-
-            pdf.addImage(imgData, "JPEG", posX, posY, larguraFotoCm, alturaFotoCm);
-            
-            // Guia de corte quase invisível
+            pdf.addImage(imgData, "JPEG", posX, margemSuperior, larguraFotoCm, alturaFotoCm);
             pdf.setDrawColor(220);
             pdf.setLineWidth(0.01);
-            pdf.rect(posX, posY, larguraFotoCm, alturaFotoCm);
+            pdf.rect(posX, margemSuperior, larguraFotoCm, alturaFotoCm);
         }
 
-        pdf.save("fotos_3x4_linha.pdf");
+        pdf.save("fotos_3x4_economico.pdf");
     }
 </script>
 </body>
