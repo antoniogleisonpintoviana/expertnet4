@@ -9,22 +9,20 @@
         .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .canvas-wrapper { position: relative; width: 354px; height: 472px; margin: auto; border: 2px solid #ccc; overflow: hidden; background: #eee; }
         .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 35px solid rgba(0,0,0,0.5); box-sizing: border-box; }
-        .crop-mask::after { content: "ENQUADRE O ROSTO"; position: absolute; top: 10px; left: 0; width: 100%; font-size: 12px; color: white; font-weight: bold; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 15px 0; }
         button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #e0e0e0; }
         .btn-main { background: var(--primary); color: white; grid-column: span 4; font-size: 16px; padding: 15px; }
         .btn-bg { background: #ff4757; color: white; grid-column: span 4; }
-        #preview-final { margin-top: 20px; border: 1px dashed #aaa; padding: 10px; display: none; }
-        #loading { display: none; color: #d63031; font-weight: bold; padding: 10px; border: 1px solid #d63031; margin-bottom: 10px; border-radius: 5px; }
+        #preview-final { margin-top: 20px; display: none; }
+        #loading { display: none; color: #d63031; font-weight: bold; padding: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>GLMax 3x4 Profissional</h2>
-    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
-    
-    <div id="loading">⏳ Processando... (Aguarde a IA carregar os modelos)</div>
+    <input type="file" id="upload" accept="image/*">
+    <div id="loading">⏳ Processando IA... Aguarde.</div>
     
     <div class="canvas-wrapper">
         <canvas id="canvas" width="354" height="472"></canvas>
@@ -38,7 +36,7 @@
         <button onclick="mover(0, 20)">Baixo</button>
         <button onclick="mover(-20, 0)">Esq.</button>
         <button onclick="mover(20, 0)">Dir.</button>
-        <button id="btnBg" onclick="removerFundoLocal()" class="btn-bg">APAGAR FUNDO (GRÁTIS)</button>
+        <button id="btnBg" onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS)</button>
     </div>
 
     <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
@@ -51,9 +49,11 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/bundle.js"></script>
 
-<script>
+<script type="module">
+    // USANDO A VERSÃO 1.4.2 QUE É A ÚLTIMA QUE O SERVIDOR ACEITA CHAMADA DIRETA SEM ERRO
+    import imglyRemoveBackground from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.2/+esm';
+
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     let imgInput = new Image();
@@ -62,15 +62,10 @@
 
     document.getElementById("upload").onchange = (e) => {
         const file = e.target.files[0];
-        if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
             imgInput.src = ev.target.result;
-            imgInput.onload = () => {
-                zoom = canvas.width / imgInput.width;
-                posX = 0; posY = 0;
-                desenhar();
-            };
+            imgInput.onload = () => { zoom = canvas.width / imgInput.width; desenhar(); };
         };
         reader.readAsDataURL(file);
     };
@@ -78,48 +73,27 @@
     function desenhar() {
         ctx.fillStyle = "white"; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if(imgInput.src) {
-            ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
-        }
+        if(imgInput.src) ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
     }
 
-    function ajustarZoom(f) { zoom *= f; desenhar(); }
-    function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
+    window.ajustarZoom = (f) => { zoom *= f; desenhar(); };
+    window.mover = (dx, dy) => { posX += dx; posY += dy; desenhar(); };
 
-    async function removerFundoLocal() {
-        // VERIFICAÇÃO DE SEGURANÇA: Checa se a biblioteca já carregou
-        if (typeof imglyRemoveBackground === 'undefined') {
-            alert("A IA ainda está carregando os componentes. Aguarde 10 segundos e tente novamente.");
-            return;
-        }
-
-        if (!imgInput.src) return alert("Selecione uma foto primeiro!");
-        
-        const loading = document.getElementById("loading");
-        const btn = document.getElementById("btnBg");
-        
-        loading.style.display = "block";
-        btn.disabled = true;
-        btn.innerText = "IA PENSANDO...";
-
+    window.removerFundoLocal = async () => {
+        if (!imgInput.src) return alert("Selecione uma foto!");
+        document.getElementById("loading").style.display = "block";
         try {
             const blob = await imglyRemoveBackground(imgInput.src);
-            const url = URL.createObjectURL(blob);
-            imgInput.src = url;
-            imgInput.onload = () => {
-                desenhar();
-                loading.style.display = "none";
-                btn.disabled = false;
-                btn.innerText = "APAGAR FUNDO (GRÁTIS)";
-            };
-        } catch (error) {
-            console.error(error);
-            alert("Erro no processamento. Verifique se o site está em HTTPS.");
-            loading.style.display = "none";
-            btn.disabled = false;
+            imgInput.src = URL.createObjectURL(blob);
+            imgInput.onload = () => { desenhar(); document.getElementById("loading").style.display = "none"; };
+        } catch (e) {
+            alert("Erro na IA. Tente carregar a foto novamente.");
+            document.getElementById("loading").style.display = "none";
         }
-    }
+    };
+</script>
 
+<script>
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
@@ -131,7 +105,7 @@
         for (let i = 0; i < 6; i++) {
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
-            ctxG.drawImage(canvas, x, y, fotoW, fotoH);
+            ctxG.drawImage(document.getElementById("canvas"), x, y, fotoW, fotoH);
         }
         document.getElementById("preview-final").style.display = "block";
     }
@@ -140,7 +114,7 @@
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         pdf.addImage(document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0), "JPEG", 10, 10, 100, 90); 
-        pdf.save("fotos_3x4_grafica.pdf");
+        pdf.save("fotos_3x4.pdf");
     }
 </script>
 </body>
