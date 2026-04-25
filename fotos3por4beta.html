@@ -45,6 +45,7 @@
         <button id="btnBg" onclick="removerFundoAPI()" class="btn-bg">REMOVER FUNDO INSTANTÂNEO</button>
     </div>
 
+    //gerar pdf
     <button onclick="gerarGrade()" class="btn-main">GERAR PREVIEW 3x4</button>
 
     <div id="preview-final" style="display:none; margin-top:20px;">
@@ -186,7 +187,7 @@
     document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
 }
     // ===== BAIXAR PDF (MEDIDAS REAIS PARA IMPRESSÃO) =====
-    function baixarPDF() {
+   function baixarPDF() {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
         orientation: "p",
@@ -196,31 +197,30 @@
 
     const larguraFotoCm = 3;
     const alturaFotoCm = 4;
-    const margemX = 1.0; // Margem da lateral da folha
-    const margemY = 1.0; // Margem do topo da folha
-    const espaco = 0.1;  // Espaço mínimo entre as fotos para corte
+    const espaco = 0.1; // 0.1 cm entre as fotos
+    const margemSuperior = 0.5; // 0.5 cm do topo
+    const quantidade = 6;
 
-    // Pega a imagem do canvas principal (onde você ajustou o zoom e posição)
+    // Cálculo para centralizar a linha de fotos na largura do A4 (21cm)
+    const larguraTotalLinha = (larguraFotoCm * quantidade) + (espaco * (quantidade - 1));
+    const margemEsquerda = (21 - larguraTotalLinha) / 2;
+
     const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
-    // Organiza as 6 fotos em 2 linhas de 3 fotos cada (Economiza muito espaço)
-    for (let i = 0; i < 6; i++) {
-        let col = i % 3;            // Coluna 0, 1 ou 2
-        let lin = Math.floor(i / 3); // Linha 0 ou 1
-        
-        let posX = margemX + (col * (larguraFotoCm + espaco));
-        let posY = margemY + (lin * (alturaFotoCm + espaco));
+    for (let i = 0; i < quantidade; i++) {
+        let posX = margemEsquerda + (i * (larguraFotoCm + espaco));
+        let posY = margemSuperior;
 
-        // Adiciona a foto no tamanho real 3x4cm sem esticar
+        // Adiciona a foto
         pdf.addImage(imgData, "JPEG", posX, posY, larguraFotoCm, alturaFotoCm);
         
-        // Borda fininha para ajudar você a cortar na guilhotina
+        // Borda fina para guia de corte
         pdf.setDrawColor(200);
         pdf.setLineWidth(0.01);
         pdf.rect(posX, posY, larguraFotoCm, alturaFotoCm);
     }
 
-    pdf.save("fotos_3x4_organizadas.pdf");
+    pdf.save("fotos_3x4_linha_unica.pdf");
 }
 </script>
 </body>
