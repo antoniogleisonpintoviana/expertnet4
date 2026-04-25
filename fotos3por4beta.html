@@ -2,11 +2,11 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>GLMax 3x4 Pro - Teclado Ativo</title>
+    <title>GLMax 3x4 Pro - Linha Única</title>
     <style>
         :root { --primary: #0566B1; }
         body { font-family: sans-serif; text-align: center; background: #f2f2f2; margin: 0; padding: 10px; overflow-x: hidden; }
-        .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .container { background: white; max-width: 600px; margin: auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
         .canvas-wrapper { position: relative; width: 354px; height: 472px; margin: auto; border: 2px solid #333; overflow: hidden; background: #fff; }
         .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 40px solid rgba(0,0,0,0.4); box-sizing: border-box; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 15px 0; }
@@ -17,14 +17,14 @@
         #loading { display: none; color: #0566B1; font-weight: bold; padding: 10px; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         .teclado-info { font-size: 10px; color: #888; margin-bottom: 10px; }
-        #canvas-grade { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; }
+        #canvas-grade { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; background: #fff; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2 style="margin-top:0; color:#333;">GLMax 3x4 Profissional</h2>
-    <div class="teclado-info">Use as <b>Setas</b> para mover e <b>+ / -</b> para o zoom</div>
+    <div class="teclado-info"><b>Setas</b>: Mover | <b>+ / -</b>: Zoom</div>
     
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
@@ -45,8 +45,7 @@
         <button id="btnBg" onclick="removerFundoAPI()" class="btn-bg">REMOVER FUNDO INSTANTÂNEO</button>
     </div>
 
-    //gerar pdf
-    <button onclick="gerarGrade()" class="btn-main">GERAR PREVIEW 3x4</button>
+    <button onclick="gerarGrade()" class="btn-main">GERAR PREVIEW (6 FOTOS)</button>
 
     <div id="preview-final" style="display:none; margin-top:20px;">
         <canvas id="canvas-grade"></canvas>
@@ -145,83 +144,73 @@
         }
     }
 
-    // ===== GERAR GRADE NA TELA (PREVIEW) =====
-   function gerarGrade() {
-    const cGrade = document.getElementById("canvas-grade");
-    const ctxG = cGrade.getContext("2d");
-    
-    // Medidas para o Preview (em pixels, mantendo a proporção de 3x4)
-    const fotoW = 354; 
-    const fotoH = 472;
-    const gap = 10; // Pequeno espaço entre as fotos no preview
-
-    // Ajusta o tamanho do canvas de preview para caber 3 colunas e 2 linhas
-    cGrade.width = (fotoW * 3) + (gap * 2);
-    cGrade.height = (fotoH * 2) + gap;
-
-    // Fundo branco
-    ctxG.fillStyle = "white";
-    ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
-
-    for (let i = 0; i < 6; i++) {
-        // Calcula a coluna (0, 1 ou 2) e a linha (0 ou 1)
-        let col = i % 3;
-        let lin = Math.floor(i / 3);
-
-        let x = col * (fotoW + gap);
-        let y = lin * (fotoH + gap);
-
-        // Desenha a foto vinda do canvas de edição
-        ctxG.drawImage(canvas, x, y, fotoW, fotoH);
+    // ===== GERAR GRADE EM LINHA ÚNICA (PREVIEW) =====
+    function gerarGrade() {
+        const cGrade = document.getElementById("canvas-grade");
+        const ctxG = cGrade.getContext("2d");
         
-        // Borda fina para visualizar o corte
-        ctxG.strokeStyle = "#ccc";
-        ctxG.lineWidth = 1;
-        ctxG.strokeRect(x, y, fotoW, fotoH);
+        const fotoW = 354; 
+        const fotoH = 472;
+        const gap = 12; // Pequeno espaço entre as fotos no preview
+
+        // Canvas de preview largo o suficiente para 6 fotos lado a lado
+        cGrade.width = (fotoW * 6) + (gap * 5) + 40;
+        cGrade.height = fotoH + 40;
+
+        ctxG.fillStyle = "white";
+        ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
+
+        for (let i = 0; i < 6; i++) {
+            let x = 20 + i * (fotoW + gap);
+            let y = 20;
+
+            ctxG.drawImage(canvas, x, y, fotoW, fotoH);
+            
+            // Moldura cinza clara para o preview
+            ctxG.strokeStyle = "#ddd";
+            ctxG.lineWidth = 1;
+            ctxG.strokeRect(x, y, fotoW, fotoH);
+        }
+
+        document.getElementById("preview-final").style.display = "block";
+        document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Mostra a área de preview e o botão de baixar
-    document.getElementById("preview-final").style.display = "block";
-    
-    // Rola a página suavemente para o preview
-    document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
-}
-    // ===== BAIXAR PDF (MEDIDAS REAIS PARA IMPRESSÃO) =====
-   function baixarPDF() {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-        orientation: "p",
-        unit: "cm",
-        format: "a4"
-    });
+    // ===== BAIXAR PDF EM LINHA ÚNICA (3x4cm REAIS) =====
+    function baixarPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: "p",
+            unit: "cm",
+            format: "a4"
+        });
 
-    const larguraFotoCm = 3;
-    const alturaFotoCm = 4;
-    const espaco = 0.1; // 0.1 cm entre as fotos
-    const margemSuperior = 0.5; // 0.5 cm do topo
-    const quantidade = 6;
+        const larguraFotoCm = 3;
+        const alturaFotoCm = 4;
+        const espaco = 0.1; 
+        const margemSuperior = 0.5;
+        const quantidade = 6;
 
-    // Cálculo para centralizar a linha de fotos na largura do A4 (21cm)
-    const larguraTotalLinha = (larguraFotoCm * quantidade) + (espaco * (quantidade - 1));
-    const margemEsquerda = (21 - larguraTotalLinha) / 2;
+        // Centralizar a tira de 6 fotos (Largura A4 = 21cm)
+        const larguraTotal = (larguraFotoCm * quantidade) + (espaco * (quantidade - 1));
+        const margemEsquerda = (21 - larguraTotal) / 2;
 
-    const imgData = canvas.toDataURL("image/jpeg", 1.0);
+        const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
-    for (let i = 0; i < quantidade; i++) {
-        let posX = margemEsquerda + (i * (larguraFotoCm + espaco));
-        let posY = margemSuperior;
+        for (let i = 0; i < quantidade; i++) {
+            let posX = margemEsquerda + (i * (larguraFotoCm + espaco));
+            let posY = margemSuperior;
 
-        // Adiciona a foto
-        pdf.addImage(imgData, "JPEG", posX, posY, larguraFotoCm, alturaFotoCm);
-        
-        // Borda fina para guia de corte
-        pdf.setDrawColor(200);
-        pdf.setLineWidth(0.01);
-        pdf.rect(posX, posY, larguraFotoCm, alturaFotoCm);
+            pdf.addImage(imgData, "JPEG", posX, posY, larguraFotoCm, alturaFotoCm);
+            
+            // Guia de corte quase invisível
+            pdf.setDrawColor(220);
+            pdf.setLineWidth(0.01);
+            pdf.rect(posX, posY, larguraFotoCm, alturaFotoCm);
+        }
+
+        pdf.save("fotos_3x4_linha.pdf");
     }
-
-    pdf.save("fotos_3x4_linha_unica.pdf");
-}
 </script>
 </body>
 </html>
