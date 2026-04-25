@@ -4,16 +4,24 @@
     <meta charset="UTF-8">
     <title>GLMax 3x4 - Pro Ilimitado</title>
     <style>
-        :root { --primary: #0566B1; --success: #16a34a; }
+        :root { --primary: #0566B1; }
         body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 10px; }
         .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        canvas { border: 1px solid #ddd; background: #fff; max-width: 100%; }
+        
+        /* Container do Canvas com a Máscara de Crop */
+        .canvas-wrapper { position: relative; width: 354px; height: 472px; margin: auto; border: 2px solid #ccc; overflow: hidden; background: #eee; }
+        canvas { cursor: move; }
+        
+        /* Máscara visual do enquadramento 3x4 */
+        .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 20px solid rgba(0,0,0,0.3); box-sizing: border-box; }
+        .crop-mask::after { content: "ENQUADRE O ROSTO AQUI"; position: absolute; top: 10px; left: 0; width: 100%; font-size: 10px; color: white; }
+
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 15px 0; }
-        button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #eee; }
+        button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #e0e0e0; }
         .btn-main { background: var(--primary); color: white; grid-column: span 4; font-size: 16px; padding: 15px; }
         .btn-bg { background: #ff4757; color: white; grid-column: span 4; }
         #preview-final { margin-top: 20px; border: 1px dashed #aaa; padding: 10px; display: none; }
-        .loading-overlay { display: none; color: var(--primary); font-weight: bold; margin: 10px 0; }
+        #loading { display: none; color: #d63031; font-weight: bold; padding: 10px; }
     </style>
 </head>
 <body>
@@ -22,18 +30,21 @@
     <h2>GLMax 3x4 Profissional</h2>
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
-    <div id="loading" class="loading-overlay">Processando IA... aguarde (baixando modelos).</div>
+    <div id="loading">⚠️ Carregando IA e Processando... (Aguarde)</div>
     
-    <canvas id="canvas" width="354" height="472"></canvas>
+    <div class="canvas-wrapper">
+        <canvas id="canvas" width="354" height="472"></canvas>
+        <div class="crop-mask"></div>
+    </div>
 
     <div class="controls">
         <button onclick="ajustarZoom(1.1)">Zoom +</button>
         <button onclick="ajustarZoom(0.9)">Zoom -</button>
-        <button onclick="mover(0, -15)">Cima</button>
-        <button onclick="mover(0, 15)">Baixo</button>
-        <button onclick="mover(-15, 0)">Esq.</button>
-        <button onclick="mover(15, 0)">Dir.</button>
-        <button onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS)</button>
+        <button onclick="mover(0, -20)">Cima</button>
+        <button onclick="mover(0, 20)">Baixo</button>
+        <button onclick="mover(-20, 0)">Esq.</button>
+        <button onclick="mover(20, 0)">Dir.</button>
+        <button id="btnBg" onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS)</button>
     </div>
 
     <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
@@ -41,28 +52,31 @@
     <div id="preview-final">
         <canvas id="canvas-grade"></canvas>
         <br><br>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF PARA IMPRESSÃO</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF</button>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/bundle.js"></script>
+<script type="module">
+    // Importação via módulo garantida para evitar "is not defined"
+    import { imglyRemoveBackground } from 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.js';
 
-<script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     let imgInput = new Image();
     let zoom = 1.0;
     let posX = 0, posY = 0;
 
+    // Carregar Imagem
     document.getElementById("upload").onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (event) => {
-            imgInput.src = event.target.result;
+        reader.onload = (ev) => {
+            imgInput.src = ev.target.result;
             imgInput.onload = () => {
+                // Ajuste inicial para caber no 3x4
                 zoom = canvas.width / imgInput.width;
                 posX = 0; posY = 0;
                 desenhar();
@@ -77,35 +91,41 @@
         if(imgInput.src) {
             ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
         }
-        ctx.strokeStyle = "rgba(0,0,0,0.1)";
-        ctx.strokeRect(50, 50, 254, 300);
     }
 
-    // Funções agora no escopo global direto (sem precisar de window.)
-    function ajustarZoom(f) { zoom *= f; desenhar(); }
-    function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
+    // Expondo funções para os botões onclick
+    window.ajustarZoom = (f) => { zoom *= f; desenhar(); };
+    window.mover = (dx, dy) => { posX += dx; posY += dy; desenhar(); };
 
-    async function removerFundoLocal() {
+    window.removerFundoLocal = async () => {
         if (!imgInput.src) return alert("Selecione uma foto!");
         const loading = document.getElementById("loading");
-        loading.style.display = "block";
+        const btn = document.getElementById("btnBg");
         
+        loading.style.display = "block";
+        btn.disabled = true;
+        btn.innerText = "IA PENSANDO...";
+
         try {
-            // Com o bundle.js, a função fica disponível globalmente
+            // Chama a biblioteca importada no módulo
             const blob = await imglyRemoveBackground(imgInput.src);
-            const url = URL.createObjectURL(blob);
-            imgInput.src = url;
+            imgInput.src = URL.createObjectURL(blob);
             imgInput.onload = () => {
                 desenhar();
                 loading.style.display = "none";
+                btn.disabled = false;
+                btn.innerText = "REMOVER FUNDO (GRÁTIS)";
             };
         } catch (error) {
             console.error(error);
-            alert("Erro na IA. Verifique sua conexão ou tente recarregar.");
+            alert("Erro na IA. Verifique se está no GitHub Pages (HTTPS).");
             loading.style.display = "none";
+            btn.disabled = false;
         }
-    }
+    };
+</script>
 
+<script>
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
@@ -117,9 +137,7 @@
         for (let i = 0; i < 6; i++) {
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
-            ctxG.drawImage(canvas, x, y, fotoW, fotoH);
-            ctxG.strokeStyle = "#eee";
-            ctxG.strokeRect(x, y, fotoW, fotoH);
+            ctxG.drawImage(document.getElementById("canvas"), x, y, fotoW, fotoH);
         }
         document.getElementById("preview-final").style.display = "block";
     }
@@ -127,8 +145,7 @@
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
-        pdf.addImage(imgData, "JPEG", 10, 10, 100, 90); 
+        pdf.addImage(document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0), "JPEG", 10, 10, 100, 90); 
         pdf.save("fotos_3x4_glmax.pdf");
     }
 </script>
