@@ -20,9 +20,9 @@
 
 <div class="container">
     <h2>GLMax 3x4 Profissional</h2>
-    <input type="file" id="upload" accept="image/*">
+    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
-    <div id="loading" class="loading-overlay">Processando IA... aguarde.</div>
+    <div id="loading" class="loading-overlay">Processando IA... aguarde (baixando modelos).</div>
     
     <canvas id="canvas" width="354" height="472"></canvas>
 
@@ -41,7 +41,7 @@
     <div id="preview-final">
         <canvas id="canvas-grade"></canvas>
         <br><br>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF PARA IMPRESSÃO</button>
     </div>
 </div>
 
@@ -56,7 +56,6 @@
     let zoom = 1.0;
     let posX = 0, posY = 0;
 
-    // Carregar Imagem
     document.getElementById("upload").onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -82,6 +81,7 @@
         ctx.strokeRect(50, 50, 254, 300);
     }
 
+    // Funções agora no escopo global direto (sem precisar de window.)
     function ajustarZoom(f) { zoom *= f; desenhar(); }
     function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
@@ -91,7 +91,7 @@
         loading.style.display = "block";
         
         try {
-            // Na versão bundle.js, a função fica disponível globalmente como imglyRemoveBackground
+            // Com o bundle.js, a função fica disponível globalmente
             const blob = await imglyRemoveBackground(imgInput.src);
             const url = URL.createObjectURL(blob);
             imgInput.src = url;
@@ -101,7 +101,7 @@
             };
         } catch (error) {
             console.error(error);
-            alert("Erro ao processar IA. Tente novamente.");
+            alert("Erro na IA. Verifique sua conexão ou tente recarregar.");
             loading.style.display = "none";
         }
     }
@@ -118,6 +118,8 @@
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
             ctxG.drawImage(canvas, x, y, fotoW, fotoH);
+            ctxG.strokeStyle = "#eee";
+            ctxG.strokeRect(x, y, fotoW, fotoH);
         }
         document.getElementById("preview-final").style.display = "block";
     }
@@ -125,7 +127,8 @@
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0), "JPEG", 10, 10, 100, 90); 
+        const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
+        pdf.addImage(imgData, "JPEG", 10, 10, 100, 90); 
         pdf.save("fotos_3x4_glmax.pdf");
     }
 </script>
