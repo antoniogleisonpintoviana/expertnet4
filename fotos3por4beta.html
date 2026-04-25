@@ -20,9 +20,9 @@
 
 <div class="container">
     <h2>GLMax 3x4 Profissional</h2>
-    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
+    <input type="file" id="upload" accept="image/*">
     
-    <div id="loading" class="loading-overlay">Processando IA... aguarde (pode demorar na primeira vez).</div>
+    <div id="loading" class="loading-overlay">Processando IA... aguarde.</div>
     
     <canvas id="canvas" width="354" height="472"></canvas>
 
@@ -33,7 +33,7 @@
         <button onclick="mover(0, 15)">Baixo</button>
         <button onclick="mover(-15, 0)">Esq.</button>
         <button onclick="mover(15, 0)">Dir.</button>
-        <button onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS/ILIMITADO)</button>
+        <button onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS)</button>
     </div>
 
     <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
@@ -41,16 +41,15 @@
     <div id="preview-final">
         <canvas id="canvas-grade"></canvas>
         <br><br>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF PARA IMPRESSÃO</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF</button>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script type="module">
-    // CORREÇÃO: Usando UNPKG para evitar erro de lodash e módulos
-    import { imglyRemoveBackground } from 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.js';
+<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/bundle.js"></script>
 
+<script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     let imgInput = new Image();
@@ -80,20 +79,19 @@
             ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
         }
         ctx.strokeStyle = "rgba(0,0,0,0.1)";
-        ctx.strokeRect(50, 50, 254, 300); // Guia de enquadramento
+        ctx.strokeRect(50, 50, 254, 300);
     }
 
-    // CORREÇÃO: Expor funções para o escopo global (window) para os botões onclick funcionarem
-    window.ajustarZoom = (f) => { zoom *= f; desenhar(); };
-    window.mover = (dx, dy) => { posX += dx; posY += dy; desenhar(); };
+    function ajustarZoom(f) { zoom *= f; desenhar(); }
+    function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
-    window.removerFundoLocal = async () => {
+    async function removerFundoLocal() {
         if (!imgInput.src) return alert("Selecione uma foto!");
         const loading = document.getElementById("loading");
         loading.style.display = "block";
         
         try {
-            // A IA roda aqui localmente no navegador
+            // Na versão bundle.js, a função fica disponível globalmente como imglyRemoveBackground
             const blob = await imglyRemoveBackground(imgInput.src);
             const url = URL.createObjectURL(blob);
             imgInput.src = url;
@@ -103,31 +101,23 @@
             };
         } catch (error) {
             console.error(error);
-            alert("Erro ao carregar IA. Certifique-se de estar usando HTTPS (GitHub Pages).");
+            alert("Erro ao processar IA. Tente novamente.");
             loading.style.display = "none";
         }
-    };
-</script>
+    }
 
-<script>
-    // Funções de geração de grade e PDF permanecem fora do módulo
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
         const fotoW = 354, fotoH = 472, gap = 15;
-
         cGrade.width = (fotoW * 3) + (gap * 2);
         cGrade.height = (fotoH * 2) + gap;
-
         ctxG.fillStyle = "white";
         ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
-
         for (let i = 0; i < 6; i++) {
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
-            ctxG.drawImage(document.getElementById("canvas"), x, y, fotoW, fotoH);
-            ctxG.strokeStyle = "#eee";
-            ctxG.strokeRect(x, y, fotoW, fotoH);
+            ctxG.drawImage(canvas, x, y, fotoW, fotoH);
         }
         document.getElementById("preview-final").style.display = "block";
     }
@@ -135,8 +125,7 @@
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
-        pdf.addImage(imgData, "JPEG", 10, 10, 100, 90); 
+        pdf.addImage(document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0), "JPEG", 10, 10, 100, 90); 
         pdf.save("fotos_3x4_glmax.pdf");
     }
 </script>
