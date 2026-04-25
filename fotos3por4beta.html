@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>GLMax 3x4 - Pro Ilimitado</title>
+    <style>
+        :root { --primary: #0566B1; --success: #16a34a; }
+        body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 10px; }
+        .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        canvas { border: 1px solid #ddd; background: #fff; max-width: 100%; cursor: move; }
+        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 15px 0; }
+        button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #eee; }
+        .btn-main { background: var(--primary); color: white; grid-column: span 4; font-size: 16px; padding: 15px; }
+        .btn-bg { background: #ff4757; color: white; grid-column: span 4; }
+        #preview-final { margin-top: 20px; border: 1px dashed #aaa; padding: 10px; display: none; }
+        .loading-overlay { display: none; color: var(--primary); font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>GLMax 3x4 Profissional</h2>
+    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
+    
+    <div id="loading" class="loading-overlay">Processando IA... aguarde.</div>
+    
+    <canvas id="canvas" width="354" height="472"></canvas>
+
+    <div class="controls">
+        <button onclick="ajustarZoom(1.1)">Zoom +</button>
+        <button onclick="ajustarZoom(0.9)">Zoom -</button>
+        <button onclick="mover(0, -15)">Cima</button>
+        <button onclick="mover(0, 15)">Baixo</button>
+        <button onclick="mover(-15, 0)">Esq.</button>
+        <button onclick="mover(15, 0)">Dir.</button>
+        <button onclick="removerFundoLocal()" class="btn-bg">REMOVER FUNDO (GRÁTIS/ILIMITADO)</button>
+    </div>
+
+    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
+
+    <div id="preview-final">
+        <canvas id="canvas-grade"></canvas>
+        <br><br>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF PARA IMPRESSÃO</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+    import { imglyRemoveBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm';
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let imgInput = new Image();
+    let zoom = 0.5;
+    let posX = 0, posY = 0;
+
+    // Carregar Imagem
+    document.getElementById("upload").onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            imgInput.src = event.target.result;
+            imgInput.onload = () => {
+                zoom = canvas.width / imgInput.width;
+                posX = 0; posY = 0;
+                desenhar();
+            };
+        };
+        reader.readAsDataURL(file);
+    };
+
+    function desenhar() {
+        ctx.fillStyle = "white"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
+        
+        // Guia de enquadramento (ajuda a colocar o olho no lugar certo)
+        ctx.strokeStyle = "rgba(0,0,0,0.1)";
+        ctx.strokeRect(50, 50, 254, 300);
+    }
+
+    // Expor funções para os botões HTML
+    window.ajustarZoom = (f) => { zoom *= f; desenhar(); };
+    window.mover = (dx, dy) => { posX += dx; posY += dy; desenhar(); };
+
+    // REMOÇÃO DE FUNDO SEM API (LOCAL)
+    window.removerFundoLocal = async () => {
+        if (!imgInput.src) return alert("Selecione uma foto!");
+        document.getElementById("loading").style.display = "block";
+        
+        try {
+            // A mágica acontece aqui: a IA roda no PC da gráfica
+            const blob = await imglyRemoveBackground(imgInput.src);
+            const url = URL.createObjectURL(blob);
+            imgInput.src = url;
+            imgInput.onload = () => {
+                desenhar();
+                document.getElementById("loading").style.display = "none";
+            };
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao processar IA. Verifique sua conexão.");
+            document.getElementById("loading").style.display = "none";
+        }
+    };
+</script>
+
+<script>
+    function gerarGrade() {
+        const cGrade = document.getElementById("canvas-grade");
+        const ctxG = cGrade.getContext("2d");
+        const fotoW = 354; // 3cm
+        const fotoH = 472; // 4cm
+        const gap = 15;
+
+        cGrade.width = (fotoW * 3) + (gap * 2);
+        cGrade.height = (fotoH * 2) + gap;
+
+        ctxG.fillStyle = "white";
+        ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
+
+        for (let i = 0; i < 6; i++) {
+            let x = (i % 3) * (fotoW + gap);
+            let y = Math.floor(i / 3) * (fotoH + gap);
+            ctxG.drawImage(document.getElementById("canvas"), x, y, fotoW, fotoH);
+            // Linha de corte bem clarinha
+            ctxG.strokeStyle = "#eee";
+            ctxG.strokeRect(x, y, fotoW, fotoH);
+        }
+        document.getElementById("preview-final").style.display = "block";
+    }
+
+    function baixarPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
+        // Posiciona no topo da página
+        pdf.addImage(imgData, "JPEG", 10, 10, 100, 90); 
+        pdf.save("fotos_3x4_glmax.pdf");
+    }
+</script>
+</body>
+</html>
