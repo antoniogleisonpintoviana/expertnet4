@@ -17,6 +17,7 @@
         #loading { display: none; color: #0566B1; font-weight: bold; padding: 10px; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         .teclado-info { font-size: 10px; color: #888; margin-bottom: 10px; }
+        #canvas-grade { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -44,11 +45,11 @@
         <button id="btnBg" onclick="removerFundoAPI()" class="btn-bg">REMOVER FUNDO INSTANTÂNEO</button>
     </div>
 
-    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
+    <button onclick="gerarGrade()" class="btn-main">GERAR PREVIEW 3x4</button>
 
     <div id="preview-final" style="display:none; margin-top:20px;">
         <canvas id="canvas-grade"></canvas>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:18px; margin-top:15px; border-radius: 8px; font-weight: bold; cursor:pointer;">BAIXAR PDF</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:18px; margin-top:15px; border-radius: 8px; font-weight: bold; cursor:pointer;">BAIXAR PDF PARA IMPRESSÃO</button>
     </div>
 </div>
 
@@ -66,7 +67,6 @@
     // --- CONTROLES POR TECLADO ---
     window.addEventListener("keydown", (e) => {
         if (!imgInput.src) return;
-        
         switch(e.key) {
             case "ArrowUp": mover(0, -5); e.preventDefault(); break;
             case "ArrowDown": mover(0, 5); e.preventDefault(); break;
@@ -107,15 +107,12 @@
         if (!imgInput.src) return alert("Selecione uma foto!");
         const loader = document.getElementById("loading");
         const btn = document.getElementById("btnBg");
-        
         loader.style.display = "block";
         btn.disabled = true;
 
         try {
-            // CONVERSÃO PARA BLOB (Mais estável que Base64 puro)
             const res = await fetch(imgInput.src);
             const blob = await res.blob();
-
             const formData = new FormData();
             formData.append("image_file", blob, "foto.png");
             formData.append("size", "auto");
@@ -136,41 +133,75 @@
                 };
             } else {
                 const erro = await response.json();
-                console.error(erro);
                 alert("Erro: " + erro.errors[0].title);
                 loader.style.display = "none";
                 btn.disabled = false;
             }
         } catch (e) {
-            console.error(e);
             alert("Falha na conexão.");
             loader.style.display = "none";
             btn.disabled = false;
         }
     }
 
+    // ===== GERAR GRADE NA TELA (PREVIEW) =====
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
         const fotoW = 354, fotoH = 472, gap = 15;
+        
         cGrade.width = (fotoW * 3) + (gap * 2);
         cGrade.height = (fotoH * 2) + gap;
+        
         ctxG.fillStyle = "white";
         ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
+        
         for (let i = 0; i < 6; i++) {
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
             ctxG.drawImage(canvas, x, y, fotoW, fotoH);
+            
+            // Borda fina para o corte no preview
+            ctxG.strokeStyle = "#ccc";
+            ctxG.strokeRect(x, y, fotoW, fotoH);
         }
         document.getElementById("preview-final").style.display = "block";
     }
 
+    // ===== BAIXAR PDF (MEDIDAS REAIS PARA IMPRESSÃO) =====
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
-        pdf.addImage(imgData, "JPEG", 10, 10, 110, 100); 
-        pdf.save("fotos_3x4.pdf");
+        const pdf = new jsPDF({
+            orientation: "p",
+            unit: "cm",
+            format: "a4"
+        });
+
+        const larguraFotoCm = 3;
+        const alturaFotoCm = 4;
+        const margemX = 2; // Distância da lateral da folha
+        const margemY = 2; // Distância do topo da folha
+        const espaco = 0.2; // Espaço entre fotos
+
+        const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+        for (let i = 0; i < 6; i++) {
+            let col = i % 3;
+            let lin = Math.floor(i / 3);
+            
+            let posX_cm = margemX + (col * (larguraFotoCm + espaco));
+            let posY_cm = margemY + (lin * (alturaFotoCm + espaco));
+
+            // Adiciona a imagem no tamanho real 3x4cm
+            pdf.addImage(imgData, "JPEG", posX_cm, posY_cm, larguraFotoCm, alturaFotoCm);
+            
+            // Desenha o contorno fino para guiar o corte
+            pdf.setDrawColor(200);
+            pdf.setLineWidth(0.01);
+            pdf.rect(posX_cm, posY_cm, larguraFotoCm, alturaFotoCm);
+        }
+
+        pdf.save("fotos_3x4_grafica.pdf");
     }
 </script>
 </body>
