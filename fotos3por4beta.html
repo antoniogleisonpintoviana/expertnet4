@@ -145,29 +145,46 @@
     }
 
     // ===== GERAR GRADE NA TELA (PREVIEW) =====
-    function gerarGrade() {
-        const cGrade = document.getElementById("canvas-grade");
-        const ctxG = cGrade.getContext("2d");
-        const fotoW = 354, fotoH = 472, gap = 15;
+   function gerarGrade() {
+    const cGrade = document.getElementById("canvas-grade");
+    const ctxG = cGrade.getContext("2d");
+    
+    // Medidas para o Preview (em pixels, mantendo a proporção de 3x4)
+    const fotoW = 354; 
+    const fotoH = 472;
+    const gap = 10; // Pequeno espaço entre as fotos no preview
+
+    // Ajusta o tamanho do canvas de preview para caber 3 colunas e 2 linhas
+    cGrade.width = (fotoW * 3) + (gap * 2);
+    cGrade.height = (fotoH * 2) + gap;
+
+    // Fundo branco
+    ctxG.fillStyle = "white";
+    ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
+
+    for (let i = 0; i < 6; i++) {
+        // Calcula a coluna (0, 1 ou 2) e a linha (0 ou 1)
+        let col = i % 3;
+        let lin = Math.floor(i / 3);
+
+        let x = col * (fotoW + gap);
+        let y = lin * (fotoH + gap);
+
+        // Desenha a foto vinda do canvas de edição
+        ctxG.drawImage(canvas, x, y, fotoW, fotoH);
         
-        cGrade.width = (fotoW * 3) + (gap * 2);
-        cGrade.height = (fotoH * 2) + gap;
-        
-        ctxG.fillStyle = "white";
-        ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
-        
-        for (let i = 0; i < 6; i++) {
-            let x = (i % 3) * (fotoW + gap);
-            let y = Math.floor(i / 3) * (fotoH + gap);
-            ctxG.drawImage(canvas, x, y, fotoW, fotoH);
-            
-            // Borda fina para o corte no preview
-            ctxG.strokeStyle = "#ccc";
-            ctxG.strokeRect(x, y, fotoW, fotoH);
-        }
-        document.getElementById("preview-final").style.display = "block";
+        // Borda fina para visualizar o corte
+        ctxG.strokeStyle = "#ccc";
+        ctxG.lineWidth = 1;
+        ctxG.strokeRect(x, y, fotoW, fotoH);
     }
 
+    // Mostra a área de preview e o botão de baixar
+    document.getElementById("preview-final").style.display = "block";
+    
+    // Rola a página suavemente para o preview
+    document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
+}
     // ===== BAIXAR PDF (MEDIDAS REAIS PARA IMPRESSÃO) =====
     function baixarPDF() {
     const { jsPDF } = window.jspdf;
