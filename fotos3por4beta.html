@@ -170,39 +170,41 @@
 
     // ===== BAIXAR PDF (MEDIDAS REAIS PARA IMPRESSÃO) =====
     function baixarPDF() {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: "p",
-            unit: "cm",
-            format: "a4"
-        });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+        orientation: "p",
+        unit: "cm",
+        format: "a4"
+    });
 
-        const larguraFotoCm = 3;
-        const alturaFotoCm = 4;
-        const margemX = 2; // Distância da lateral da folha
-        const margemY = 2; // Distância do topo da folha
-        const espaco = 0.2; // Espaço entre fotos
+    const larguraFotoCm = 3;
+    const alturaFotoCm = 4;
+    const margemX = 1.0; // Margem da lateral da folha
+    const margemY = 1.0; // Margem do topo da folha
+    const espaco = 0.1;  // Espaço mínimo entre as fotos para corte
 
-        const imgData = canvas.toDataURL("image/jpeg", 1.0);
+    // Pega a imagem do canvas principal (onde você ajustou o zoom e posição)
+    const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
-        for (let i = 0; i < 6; i++) {
-            let col = i % 3;
-            let lin = Math.floor(i / 3);
-            
-            let posX_cm = margemX + (col * (larguraFotoCm + espaco));
-            let posY_cm = margemY + (lin * (alturaFotoCm + espaco));
+    // Organiza as 6 fotos em 2 linhas de 3 fotos cada (Economiza muito espaço)
+    for (let i = 0; i < 6; i++) {
+        let col = i % 3;            // Coluna 0, 1 ou 2
+        let lin = Math.floor(i / 3); // Linha 0 ou 1
+        
+        let posX = margemX + (col * (larguraFotoCm + espaco));
+        let posY = margemY + (lin * (alturaFotoCm + espaco));
 
-            // Adiciona a imagem no tamanho real 3x4cm
-            pdf.addImage(imgData, "JPEG", posX_cm, posY_cm, larguraFotoCm, alturaFotoCm);
-            
-            // Desenha o contorno fino para guiar o corte
-            pdf.setDrawColor(200);
-            pdf.setLineWidth(0.01);
-            pdf.rect(posX_cm, posY_cm, larguraFotoCm, alturaFotoCm);
-        }
-
-        pdf.save("fotos_3x4_grafica.pdf");
+        // Adiciona a foto no tamanho real 3x4cm sem esticar
+        pdf.addImage(imgData, "JPEG", posX, posY, larguraFotoCm, alturaFotoCm);
+        
+        // Borda fininha para ajudar você a cortar na guilhotina
+        pdf.setDrawColor(200);
+        pdf.setLineWidth(0.01);
+        pdf.rect(posX, posY, larguraFotoCm, alturaFotoCm);
     }
+
+    pdf.save("fotos_3x4_organizadas.pdf");
+}
 </script>
 </body>
 </html>
