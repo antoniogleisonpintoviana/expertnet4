@@ -8,8 +8,8 @@
         body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 10px; }
         .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .canvas-wrapper { position: relative; width: 354px; height: 472px; margin: auto; border: 2px solid #ccc; overflow: hidden; background: #eee; }
-        .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 30px solid rgba(0,0,0,0.4); box-sizing: border-box; }
-        .crop-mask::after { content: "CENTRALIZE O ROSTO"; position: absolute; top: 10px; left: 0; width: 100%; font-size: 11px; color: white; font-weight: bold; }
+        .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 35px solid rgba(0,0,0,0.5); box-sizing: border-box; }
+        .crop-mask::after { content: "ENQUADRE O ROSTO"; position: absolute; top: 10px; left: 0; width: 100%; font-size: 12px; color: white; font-weight: bold; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 15px 0; }
         button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #e0e0e0; }
         .btn-main { background: var(--primary); color: white; grid-column: span 4; font-size: 16px; padding: 15px; }
@@ -24,7 +24,7 @@
     <h2>GLMax 3x4 Profissional</h2>
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
-    <div id="loading">⏳ Carregando IA... (Isso só demora na primeira foto do dia)</div>
+    <div id="loading">⏳ Processando... (Aguarde a IA carregar os modelos)</div>
     
     <div class="canvas-wrapper">
         <canvas id="canvas" width="354" height="472"></canvas>
@@ -41,12 +41,12 @@
         <button id="btnBg" onclick="removerFundoLocal()" class="btn-bg">APAGAR FUNDO (GRÁTIS)</button>
     </div>
 
-    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA PARA IMPRESSÃO</button>
+    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
 
     <div id="preview-final">
         <canvas id="canvas-grade"></canvas>
         <br><br>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF (A4)</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:15px;">BAIXAR PDF</button>
     </div>
 </div>
 
@@ -87,16 +87,22 @@
     function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
     async function removerFundoLocal() {
+        // VERIFICAÇÃO DE SEGURANÇA: Checa se a biblioteca já carregou
+        if (typeof imglyRemoveBackground === 'undefined') {
+            alert("A IA ainda está carregando os componentes. Aguarde 10 segundos e tente novamente.");
+            return;
+        }
+
         if (!imgInput.src) return alert("Selecione uma foto primeiro!");
+        
         const loading = document.getElementById("loading");
         const btn = document.getElementById("btnBg");
         
         loading.style.display = "block";
         btn.disabled = true;
-        btn.innerText = "IA TRABALHANDO...";
+        btn.innerText = "IA PENSANDO...";
 
         try {
-            // Usando a função global que o bundle.js fornece
             const blob = await imglyRemoveBackground(imgInput.src);
             const url = URL.createObjectURL(blob);
             imgInput.src = url;
@@ -108,7 +114,7 @@
             };
         } catch (error) {
             console.error(error);
-            alert("Erro de conexão com a IA. Tente novamente ou verifique se o site está como HTTPS.");
+            alert("Erro no processamento. Verifique se o site está em HTTPS.");
             loading.style.display = "none";
             btn.disabled = false;
         }
