@@ -7,7 +7,7 @@
         :root { --primary: #0566B1; --success: #16a34a; }
         body { font-family: sans-serif; text-align: center; background: #f4f4f4; margin: 0; padding: 10px; }
         .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        canvas { border: 1px solid #ddd; background: #fff; max-width: 100%; cursor: move; }
+        canvas { border: 1px solid #ddd; background: #fff; max-width: 100%; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 15px 0; }
         button { padding: 10px 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; background: #eee; }
         .btn-main { background: var(--primary); color: white; grid-column: span 4; font-size: 16px; padding: 15px; }
@@ -22,7 +22,7 @@
     <h2>GLMax 3x4 Profissional</h2>
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
-    <div id="loading" class="loading-overlay">Processando IA... aguarde.</div>
+    <div id="loading" class="loading-overlay">Processando IA... aguarde (pode demorar na primeira vez).</div>
     
     <canvas id="canvas" width="354" height="472"></canvas>
 
@@ -46,13 +46,15 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script type="module">
-    import { imglyRemoveBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm';
+    // CORREÇÃO: Usando UNPKG para evitar erro de lodash e módulos
+    import { imglyRemoveBackground } from 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.js';
 
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     let imgInput = new Image();
-    let zoom = 0.5;
+    let zoom = 1.0;
     let posX = 0, posY = 0;
 
     // Carregar Imagem
@@ -74,46 +76,45 @@
     function desenhar() {
         ctx.fillStyle = "white"; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
-        
-        // Guia de enquadramento (ajuda a colocar o olho no lugar certo)
+        if(imgInput.src) {
+            ctx.drawImage(imgInput, posX, posY, imgInput.width * zoom, imgInput.height * zoom);
+        }
         ctx.strokeStyle = "rgba(0,0,0,0.1)";
-        ctx.strokeRect(50, 50, 254, 300);
+        ctx.strokeRect(50, 50, 254, 300); // Guia de enquadramento
     }
 
-    // Expor funções para os botões HTML
+    // CORREÇÃO: Expor funções para o escopo global (window) para os botões onclick funcionarem
     window.ajustarZoom = (f) => { zoom *= f; desenhar(); };
     window.mover = (dx, dy) => { posX += dx; posY += dy; desenhar(); };
 
-    // REMOÇÃO DE FUNDO SEM API (LOCAL)
     window.removerFundoLocal = async () => {
         if (!imgInput.src) return alert("Selecione uma foto!");
-        document.getElementById("loading").style.display = "block";
+        const loading = document.getElementById("loading");
+        loading.style.display = "block";
         
         try {
-            // A mágica acontece aqui: a IA roda no PC da gráfica
+            // A IA roda aqui localmente no navegador
             const blob = await imglyRemoveBackground(imgInput.src);
             const url = URL.createObjectURL(blob);
             imgInput.src = url;
             imgInput.onload = () => {
                 desenhar();
-                document.getElementById("loading").style.display = "none";
+                loading.style.display = "none";
             };
         } catch (error) {
             console.error(error);
-            alert("Erro ao processar IA. Verifique sua conexão.");
-            document.getElementById("loading").style.display = "none";
+            alert("Erro ao carregar IA. Certifique-se de estar usando HTTPS (GitHub Pages).");
+            loading.style.display = "none";
         }
     };
 </script>
 
 <script>
+    // Funções de geração de grade e PDF permanecem fora do módulo
     function gerarGrade() {
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
-        const fotoW = 354; // 3cm
-        const fotoH = 472; // 4cm
-        const gap = 15;
+        const fotoW = 354, fotoH = 472, gap = 15;
 
         cGrade.width = (fotoW * 3) + (gap * 2);
         cGrade.height = (fotoH * 2) + gap;
@@ -125,7 +126,6 @@
             let x = (i % 3) * (fotoW + gap);
             let y = Math.floor(i / 3) * (fotoH + gap);
             ctxG.drawImage(document.getElementById("canvas"), x, y, fotoW, fotoH);
-            // Linha de corte bem clarinha
             ctxG.strokeStyle = "#eee";
             ctxG.strokeRect(x, y, fotoW, fotoH);
         }
@@ -136,7 +136,6 @@
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
-        // Posiciona no topo da página
         pdf.addImage(imgData, "JPEG", 10, 10, 100, 90); 
         pdf.save("fotos_3x4_glmax.pdf");
     }
