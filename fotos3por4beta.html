@@ -2,10 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>GLMax 3x4 Pro - API Ativa</title>
+    <title>GLMax 3x4 Pro - Teclado Ativo</title>
     <style>
         :root { --primary: #0566B1; }
-        body { font-family: sans-serif; text-align: center; background: #f2f2f2; margin: 0; padding: 10px; }
+        body { font-family: sans-serif; text-align: center; background: #f2f2f2; margin: 0; padding: 10px; overflow-x: hidden; }
         .container { background: white; max-width: 500px; margin: auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
         .canvas-wrapper { position: relative; width: 354px; height: 472px; margin: auto; border: 2px solid #333; overflow: hidden; background: #fff; }
         .crop-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 40px solid rgba(0,0,0,0.4); box-sizing: border-box; }
@@ -16,14 +16,16 @@
         .btn-bg { background: #00ca6d !important; color: white; grid-column: span 4; font-size: 14px; }
         #loading { display: none; color: #0566B1; font-weight: bold; padding: 10px; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
-        canvas { display: block; margin: auto; max-width: 100%; }
+        .teclado-info { font-size: 10px; color: #888; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2 style="margin-top:0; color:#333;">GLMax 3x4 Profissional</h2>
-    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px; font-size: 14px;">
+    <div class="teclado-info">Use as <b>Setas</b> para mover e <b>+ / -</b> para o zoom</div>
+    
+    <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
     
     <div id="loading">🚀 IA EM AÇÃO... AGUARDE</div>
     
@@ -33,20 +35,20 @@
     </div>
 
     <div class="controls">
-        <button onclick="ajustarZoom(1.1)">ZOOM +</button>
-        <button onclick="ajustarZoom(0.9)">ZOOM -</button>
-        <button onclick="mover(0, -15)">CIMA</button>
-        <button onclick="mover(0, 15)">BAIXO</button>
-        <button onclick="mover(-15, 0)">ESQ.</button>
-        <button onclick="mover(15, 0)">DIR.</button>
+        <button onclick="ajustarZoom(1.1)">ZOOM (+)</button>
+        <button onclick="ajustarZoom(0.9)">ZOOM (-)</button>
+        <button onclick="mover(0, -10)">CIMA</button>
+        <button onclick="mover(0, 10)">BAIXO</button>
+        <button onclick="mover(-10, 0)">ESQ.</button>
+        <button onclick="mover(10, 0)">DIR.</button>
         <button id="btnBg" onclick="removerFundoAPI()" class="btn-bg">REMOVER FUNDO INSTANTÂNEO</button>
     </div>
 
-    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA PARA IMPRESSÃO</button>
+    <button onclick="gerarGrade()" class="btn-main">GERAR FOLHA 3x4</button>
 
-    <div id="preview-final" style="display:none; margin-top:20px; border-top: 2px dashed #ccc; padding-top: 20px;">
+    <div id="preview-final" style="display:none; margin-top:20px;">
         <canvas id="canvas-grade"></canvas>
-        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:18px; margin-top:15px; border-radius: 8px; font-weight: bold; cursor:pointer;">BAIXAR PDF (TAMANHO A4)</button>
+        <button onclick="baixarPDF()" style="background:#000; color:white; width:100%; padding:18px; margin-top:15px; border-radius: 8px; font-weight: bold;">BAIXAR PDF</button>
     </div>
 </div>
 
@@ -59,8 +61,21 @@
     let zoom = 1.0;
     let posX = 0, posY = 0;
 
-    // SUA CHAVE CONFIGURADA
     const apiKey = "MxDhSaXwo3q29moQmbCTxepz";
+
+    // --- CONTROLES POR TECLADO ---
+    window.addEventListener("keydown", (e) => {
+        if (!imgInput.src) return;
+        
+        switch(e.key) {
+            case "ArrowUp": mover(0, -5); e.preventDefault(); break;
+            case "ArrowDown": mover(0, 5); e.preventDefault(); break;
+            case "ArrowLeft": mover(-5, 0); e.preventDefault(); break;
+            case "ArrowRight": mover(5, 0); e.preventDefault(); break;
+            case "+": case "=": ajustarZoom(1.02); break;
+            case "-": case "_": ajustarZoom(0.98); break;
+        }
+    });
 
     document.getElementById("upload").onchange = (e) => {
         const file = e.target.files[0];
@@ -89,18 +104,17 @@
     function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
     async function removerFundoAPI() {
-        if (!imgInput.src) return alert("Selecione uma foto primeiro!");
-
+        if (!imgInput.src) return alert("Selecione uma foto!");
         const loader = document.getElementById("loading");
         const btn = document.getElementById("btnBg");
         
         loader.style.display = "block";
         btn.disabled = true;
-        btn.style.opacity = "0.5";
 
-        const base64Image = imgInput.src.split(",")[1];
+        // Limpeza do Base64 para evitar Erro 400
+        const base64Data = imgInput.src.split(",")[1];
         const formData = new FormData();
-        formData.append("image_file_b64", base64Image);
+        formData.append("image_file_b64", base64Data);
         formData.append("size", "auto");
 
         try {
@@ -117,20 +131,17 @@
                     desenhar(); 
                     loader.style.display = "none";
                     btn.disabled = false;
-                    btn.style.opacity = "1";
                 };
             } else {
                 const erro = await response.json();
-                alert("Erro: " + (erro.errors[0].title || "Verifique seus créditos"));
+                alert("Erro: " + erro.errors[0].title);
                 loader.style.display = "none";
                 btn.disabled = false;
-                btn.style.opacity = "1";
             }
         } catch (e) {
-            alert("Falha na conexão com a IA.");
+            alert("Falha na conexão.");
             loader.style.display = "none";
             btn.disabled = false;
-            btn.style.opacity = "1";
         }
     }
 
@@ -154,9 +165,8 @@
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgData = document.getElementById("canvas-grade").toDataURL("image/jpeg", 1.0);
-        // Posiciona a grade centralizada no topo do A4
-        pdf.addImage(imgData, "JPEG", 10, 10, 120, 105); 
-        pdf.save("fotos_3x4_prontas.pdf");
+        pdf.addImage(imgData, "JPEG", 10, 10, 110, 100); 
+        pdf.save("fotos_3x4.pdf");
     }
 </script>
 </body>
