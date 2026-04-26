@@ -118,7 +118,7 @@
     <input type="file" id="imageUpload" accept="image/*" style="display: none">
 
     <div class="control-group">
-        <textarea id="promptInput" placeholder="Ex: Extraia o texto desta imagem..."></textarea>
+        <textarea id="promptInput" placeholder="Ex: O que está escrito nesta imagem?"></textarea>
     </div>
 
     <button id="btnProcessar">Processar com Gemini 3</button>
@@ -129,7 +129,6 @@
 </div>
 
 <script>
-    // CHAVE ATUALIZADA E PROTEGIDA POR DOMÍNIO
     const API_KEY = "AIzaSyDJIQdrha8Pi8T-iB0yDe-3yST7oBujKco"; 
     
     const imageUpload = document.getElementById('imageUpload');
@@ -140,7 +139,7 @@
     const loadingStatus = document.getElementById('loadingStatus');
     const resultArea = document.getElementById('resultArea');
 
-    // Carregamento da imagem com preview
+    // Carregamento da imagem
     imageUpload.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -156,7 +155,7 @@
         }
     });
 
-    // Função de cópia rápida
+    // Função de copiar
     btnCopiar.addEventListener('click', () => {
         navigator.clipboard.writeText(resultArea.innerText).then(() => {
             const originalText = btnCopiar.innerText;
@@ -165,95 +164,72 @@
         });
     });
 
-  btnProcessar.addEventListener('click', async () => {
-    const prompt = document.getElementById('promptInput').value;
-    
-    // 1. Verificações de segurança
-    if (!imagePreview.src || imagePreview.src === "" || imagePreview.src.includes('window.location.href')) {
-        alert("Por favor, selecione uma imagem primeiro!");
-        return;
-    }
-    if (!prompt.trim()) {
-        alert("Digite um comando para a IA.");
-        return;
-    }
-
-    loadingStatus.style.display = 'block';
-    btnProcessar.disabled = true;
-    resultArea.style.display = 'none';
-
-    try {
-        // ... dentro do seu try ...
-
-const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
-const base64Image = imagePreview.src.split(',')[1];
-
-const payload = {
-    contents: [{
-        parts: [
-            { text: prompt }, // Parte 0: Texto
-            { 
-                inline_data: { // Parte 1: Imagem
-                    mime_type: mimeType, 
-                    data: base64Image 
-                } 
-            }
-        ]
-    }]
-};
-
-const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-});
-        // 2. Extração correta do MIME Type e do Base64
-        // Isso garante que pegamos 'image/jpeg' ou 'image/png' puro
-        const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
-        const base64Image = imagePreview.src.split(',')[1];
-
-        // 3. Montagem do corpo da requisição (A parte que estava dando erro)
-        const conteudo = {
-            contents: [{
-                parts: [
-                    { text: prompt },
-                    { 
-                        inline_data: { 
-                            mime_type: mimeType, 
-                            data: base64Image 
-                        } 
-                    }
-                ]
-            }]
-        };
-
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(conteudo)
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            throw new Error(data.error.message);
-        } else if (data.candidates && data.candidates[0]) {
-            const textResponse = data.candidates[0].content.parts[0].text;
-            resultArea.innerText = textResponse;
-            resultArea.style.display = 'block';
-            if(btnCopiar) btnCopiar.style.display = 'block';
+    btnProcessar.addEventListener('click', async () => {
+        const prompt = document.getElementById('promptInput').value;
+        
+        if (!imagePreview.src || imagePreview.src === "" || imagePreview.src.includes('window.location.href')) {
+            alert("Por favor, selecione uma imagem primeiro!");
+            return;
+        }
+        if (!prompt.trim()) {
+            alert("Digite um comando para a IA.");
+            return;
         }
 
-    } catch (error) {
-        console.error("Erro detalhado:", error);
-        alert("Erro na API: " + error.message);
-    } finally {
-        loadingStatus.style.display = 'none';
-        btnProcessar.disabled = false;
-    }
-});
+        loadingStatus.style.display = 'block';
+        btnProcessar.disabled = true;
+        resultArea.style.display = 'none';
+        btnCopiar.style.display = 'none';
+
+        try {
+            // Limpa o base64 e pega o MIME type
+            const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
+            const base64Image = imagePreview.src.split(',')[1];
+
+            // Montagem do objeto seguindo estritamente a documentação v1
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { 
+                            inline_data: { 
+                                mime_type: mimeType, 
+                                data: base64Image 
+                            } 
+                        }
+                    ]
+                }]
+            };
+
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error.message);
+            } else if (data.candidates && data.candidates[0]) {
+                const textResponse = data.candidates[0].content.parts[0].text;
+                resultArea.innerText = textResponse;
+                resultArea.style.display = 'block';
+                btnCopiar.style.display = 'block';
+            } else {
+                alert("Ocorreu um erro desconhecido na resposta da IA.");
+            }
+
+        } catch (error) {
+            console.error("Erro detalhado:", error);
+            alert("Erro na API: " + error.message);
+        } finally {
+            loadingStatus.style.display = 'none';
+            btnProcessar.disabled = false;
+        }
+    });
 </script>
 </body>
 </html>
