@@ -19,7 +19,7 @@
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 390px;
+            width: 400px;
             text-align: center;
         }
         h2 { color: #333; margin-top: 0; font-size: 20px; }
@@ -76,10 +76,33 @@
             font-weight: bold;
             cursor: pointer;
             transition: background 0.3s;
+            margin-bottom: 10px;
         }
         button:hover { background-color: #000; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        #btnCopiar {
+            background-color: #28a745;
+            display: none;
+        }
+        #btnCopiar:hover { background-color: #218838; }
+
         .loading { display: none; color: #666; font-size: 13px; margin-top: 10px; font-weight: bold; }
+        
+        #resultArea {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+            font-size: 14px;
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -95,35 +118,51 @@
     <input type="file" id="imageUpload" accept="image/*" style="display: none">
 
     <div class="control-group">
-        <textarea id="promptInput" placeholder="Ex: O que está escrito nesta imagem?"></textarea>
+        <textarea id="promptInput" placeholder="Ex: Extraia o texto desta imagem..."></textarea>
     </div>
 
     <button id="btnProcessar">Processar com Gemini 3</button>
-    <div id="loadingStatus" class="loading">⚡ Processando com Gemini 3... aguarde.</div>
+    <button id="btnCopiar">📋 Copiar Texto</button>
+    
+    <div id="loadingStatus" class="loading">⚡ Processando com Gemini... aguarde.</div>
+    <div id="resultArea"></div>
 </div>
 
 <script>
-    const API_KEY = "AIzaSyBSgh5EXZua8vGcjW2RUPl-WBTMfYmYCCc"; 
+    // CHAVE ATUALIZADA E PROTEGIDA POR DOMÍNIO
+    const API_KEY = "AIzaSyDJIQdrha8Pi8T-iB0yDe-3yST7oBujKco"; 
+    
     const imageUpload = document.getElementById('imageUpload');
     const imagePreview = document.getElementById('imagePreview');
     const placeholder = document.getElementById('placeholder');
     const btnProcessar = document.getElementById('btnProcessar');
+    const btnCopiar = document.getElementById('btnCopiar');
     const loadingStatus = document.getElementById('loadingStatus');
+    const resultArea = document.getElementById('resultArea');
 
-    // Correção no carregamento da imagem
+    // Carregamento da imagem com preview
     imageUpload.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(event) {
-                imagePreview.onload = function() {
-                    imagePreview.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
+                imagePreview.style.display = 'block';
+                placeholder.style.display = 'none';
                 imagePreview.src = event.target.result;
+                resultArea.style.display = 'none';
+                btnCopiar.style.display = 'none';
             }
             reader.readAsDataURL(file);
         }
+    });
+
+    // Função de cópia rápida
+    btnCopiar.addEventListener('click', () => {
+        navigator.clipboard.writeText(resultArea.innerText).then(() => {
+            const originalText = btnCopiar.innerText;
+            btnCopiar.innerText = "✅ Copiado!";
+            setTimeout(() => btnCopiar.innerText = originalText, 2000);
+        });
     });
 
     btnProcessar.addEventListener('click', async () => {
@@ -133,18 +172,22 @@
             alert("Por favor, selecione uma imagem primeiro!");
             return;
         }
-        if (!prompt) {
+        if (!prompt.trim()) {
             alert("Digite um comando para a IA.");
             return;
         }
 
         loadingStatus.style.display = 'block';
         btnProcessar.disabled = true;
+        resultArea.style.display = 'none';
+        btnCopiar.style.display = 'none';
 
+        // Extração dinâmica do tipo e base64
+        const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
         const base64Image = imagePreview.src.split(',')[1];
 
-        // URL ATUALIZADA PARA O MODELO QUE VOCÊ TEM (Gemini 3 Flash Preview)
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`;
+        // Usando o endpoint estável 1.5 Flash (ideal para OCR rápido)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
         try {
             const response = await fetch(url, {
@@ -154,7 +197,7 @@
                     contents: [{
                         parts: [
                             { text: prompt },
-                            { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                            { inline_data: { mime_type: mimeType, data: base64Image } }
                         ]
                     }]
                 })
@@ -163,19 +206,19 @@
             const data = await response.json();
 
             if (data.error) {
-                console.error("Erro da API:", data.error);
-                alert("Erro: " + data.error.message);
+                throw new Error(data.error.message);
             } else if (data.candidates && data.candidates[0]) {
                 const textResponse = data.candidates[0].content.parts[0].text;
-                alert("Resposta do Gemini 3:\n\n" + textResponse);
+                resultArea.innerText = textResponse;
+                resultArea.style.display = 'block';
+                btnCopiar.style.display = 'block';
             } else {
-                alert("A IA não retornou uma resposta válida. Verifique o console.");
-                console.log("Resposta completa:", data);
+                alert("A IA não retornou uma resposta. Verifique o console.");
             }
 
         } catch (error) {
-            console.error("Erro no Fetch:", error);
-            alert("Erro de conexão com o servidor do Google.");
+            console.error("Erro:", error);
+            alert("Erro: " + error.message);
         } finally {
             loadingStatus.style.display = 'none';
             btnProcessar.disabled = false;
