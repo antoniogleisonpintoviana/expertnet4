@@ -178,12 +178,12 @@
         btnProcessar.disabled = true;
 
         try {
-            // AJUSTE CRÍTICO: Limpando os dados da imagem
             const parts = imagePreview.src.split(',');
-            const mimeType = parts[0].match(/:(.*?);/)[1]; // Pega 'image/jpeg'
-            const base64Data = parts[1]; // Pega só o código da imagem, sem o cabeçalho
+            const mimeType = parts[0].match(/:(.*?);/)[1];
+            const base64Data = parts[1];
 
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            // URL REVISADA: Usando v1beta e o nome completo do modelo
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -201,6 +201,7 @@
             const data = await response.json();
 
             if (data.error) {
+                // Se der erro de 404 de novo, ele vai te avisar exatamente o que o Google disse
                 throw new Error(data.error.message);
             }
 
@@ -213,7 +214,8 @@
 
         } catch (error) {
             console.error("Erro detalhado:", error);
-            alert("Erro: " + error.message);
+            // Mensagem amigável para o ExpertNet
+            alert("Erro na conexão: " + error.message);
         } finally {
             loadingStatus.style.display = 'none';
             btnProcessar.disabled = false;
