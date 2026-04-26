@@ -175,32 +175,25 @@
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
     try {
-        const response = await fetch(url, {
+       const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
                     parts: [
-                        { text: prompt },
-                        { inline_data: { mime_type: mimeType, data: base64Image } }
+                        { 
+                            text: prompt 
+                        },
+                        { 
+                            inline_data: { 
+                                mime_type: mimeType, 
+                                data: base64Image 
+                            } 
+                        }
                     ]
                 }]
             })
         });
-
-        const data = await response.json();
-
-        if (data.error) {
-            // Se der erro de "not found", tentamos o caminho alternativo v1beta
-            throw new Error(data.error.message);
-        }
-        
-        // ... resto do seu código de sucesso
-    } catch (error) {
-        console.error("Erro detalhado:", error);
-        alert("Erro na API: " + error.message);
-    }
-});
 </script>
 </body>
 </html>
