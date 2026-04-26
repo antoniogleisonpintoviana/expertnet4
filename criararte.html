@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Editor - ExpertNet</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .editor-container {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 390px;
+            text-align: center;
+        }
+
+        h2 { color: #333; margin-top: 0; font-size: 20px; }
+
+        /* O seu container personalizado */
+        .canvas-wrapper {
+            position: relative;
+            width: 354px;
+            height: 472px;
+            margin: 20px auto; /* Centralizado e com espaço no topo */
+            border: 2px dashed #ccc;
+            overflow: hidden;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .canvas-wrapper:hover { border-color: #333; }
+
+        #imagePreview {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .placeholder-text {
+            color: #888;
+            font-size: 14px;
+            padding: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: none;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover { background-color: #000; }
+
+        .loading { display: none; color: #666; font-size: 13px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="editor-container">
+    <h2>Gemini AI Designer</h2>
+
+    <div class="canvas-wrapper" onclick="document.getElementById('imageUpload').click()">
+        <span class="placeholder-text" id="placeholder">Clique para subir a imagem (354x472)</span>
+        <img id="imagePreview" src="" alt="Preview">
+    </div>
+    
+    <input type="file" id="imageUpload" accept="image/*" style="display: none">
+
+    <div class="control-group">
+        <textarea id="promptInput" placeholder="Ex: Analise esta imagem e me diga quais cores de fonte combinam com ela..."></textarea>
+    </div>
+
+    <button id="btnProcessar">Processar com Gemini</button>
+    <div id="loadingStatus" class="loading">Processando imagem... aguarde.</div>
+</div>
+
+<script>
+    const API_KEY = "AIzaSyBSgh5EXZua8vGcjW2RUPl-WBTMfYmYCCc"; 
+    const imageUpload = document.getElementById('imageUpload');
+    const imagePreview = document.getElementById('imagePreview');
+    const placeholder = document.getElementById('placeholder');
+    const btnProcessar = document.getElementById('btnProcessar');
+    const loadingStatus = document.getElementById('loadingStatus');
+
+    // Preview da imagem
+    imageUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                imagePreview.src = event.target.result;
+                imagePreview.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Chamada para a API
+    btnProcessar.addEventListener('click', async () => {
+        const prompt = document.getElementById('promptInput').value;
+        
+        if (!imagePreview.src || imagePreview.src === "") {
+            alert("Selecione uma imagem primeiro!");
+            return;
+        }
+        if (!prompt) {
+            alert("Digite um comando para a IA.");
+            return;
+        }
+
+        loadingStatus.style.display = 'block';
+        btnProcessar.disabled = true;
+
+        // Extrai o Base64 puro
+        const base64Image = imagePreview.src.split(',')[1];
+
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                ]
+            }]
+        };
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            const textResponse = data.candidates[0].content.parts[0].text;
+            
+            // Exibe a resposta no console e em um alerta para teste
+            console.log("Resposta do Gemini:", textResponse);
+            alert("Resposta da IA:\n\n" + textResponse);
+
+        } catch (error) {
+            console.error("Erro:", error);
+            alert("Erro ao processar. Verifique sua chave e conexão.");
+        } finally {
+            loadingStatus.style.display = 'none';
+            btnProcessar.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
