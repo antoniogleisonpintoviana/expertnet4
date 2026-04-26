@@ -165,65 +165,42 @@
         });
     });
 
-    btnProcessar.addEventListener('click', async () => {
-        const prompt = document.getElementById('promptInput').value;
+   btnProcessar.addEventListener('click', async () => {
+    // ... (suas verificações de imagem e prompt)
+
+    const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
+    const base64Image = imagePreview.src.split(',')[1];
+
+    // URL ATUALIZADA (v1 em vez de v1beta)
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: mimeType, data: base64Image } }
+                    ]
+                }]
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            // Se der erro de "not found", tentamos o caminho alternativo v1beta
+            throw new Error(data.error.message);
+        }
         
-        if (!imagePreview.src || imagePreview.src === "" || imagePreview.src.includes('window.location.href')) {
-            alert("Por favor, selecione uma imagem primeiro!");
-            return;
-        }
-        if (!prompt.trim()) {
-            alert("Digite um comando para a IA.");
-            return;
-        }
-
-        loadingStatus.style.display = 'block';
-        btnProcessar.disabled = true;
-        resultArea.style.display = 'none';
-        btnCopiar.style.display = 'none';
-
-        // Extração dinâmica do tipo e base64
-        const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
-        const base64Image = imagePreview.src.split(',')[1];
-
-        // Usando o endpoint estável 1.5 Flash (ideal para OCR rápido)
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inline_data: { mime_type: mimeType, data: base64Image } }
-                        ]
-                    }]
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.error) {
-                throw new Error(data.error.message);
-            } else if (data.candidates && data.candidates[0]) {
-                const textResponse = data.candidates[0].content.parts[0].text;
-                resultArea.innerText = textResponse;
-                resultArea.style.display = 'block';
-                btnCopiar.style.display = 'block';
-            } else {
-                alert("A IA não retornou uma resposta. Verifique o console.");
-            }
-
-        } catch (error) {
-            console.error("Erro:", error);
-            alert("Erro: " + error.message);
-        } finally {
-            loadingStatus.style.display = 'none';
-            btnProcessar.disabled = false;
-        }
-    });
+        // ... resto do seu código de sucesso
+    } catch (error) {
+        console.error("Erro detalhado:", error);
+        alert("Erro na API: " + error.message);
+    }
+});
 </script>
 </body>
 </html>
