@@ -84,11 +84,16 @@
         reader.onload = (ev) => {
             imgInput.src = ev.target.result;
             imgInput.onload = () => { 
-                 zoom = canvas.width / imgInput.width; 
-                 posX = 0; 
-                 // MODIFICAÇÃO AQUI: Imagem começa 60px abaixo do topo
-                 posY = 60; 
-                 desenhar(); 
+                // 1. ZOOM INICIAL: Aumentado em 1.3x para o rosto preencher mais o quadro
+                zoom = (canvas.width / imgInput.width) * 1.3; 
+                
+                // 2. POSIÇÃO X: Centraliza horizontalmente com base no novo zoom
+                posX = (canvas.width - (imgInput.width * zoom)) / 2;
+
+                // 3. POSIÇÃO Y: Ajustado para 80px para descer a imagem e enquadrar o rosto
+                posY = 80; 
+
+                desenhar(); 
             };
         };
         reader.readAsDataURL(file);
@@ -102,7 +107,20 @@
         }
     }
 
-    function ajustarZoom(f) { zoom *= f; desenhar(); }
+    function ajustarZoom(f) { 
+        // Mantém o centro aproximado ao aplicar zoom manual
+        const oldW = imgInput.width * zoom;
+        const oldH = imgInput.height * zoom;
+        zoom *= f;
+        const newW = imgInput.width * zoom;
+        const newH = imgInput.height * zoom;
+        
+        posX -= (newW - oldW) / 2;
+        posY -= (newH - oldH) / 2;
+        
+        desenhar(); 
+    }
+
     function mover(dx, dy) { posX += dx; posY += dy; desenhar(); }
 
     async function removerFundoAPI() {
@@ -126,13 +144,6 @@
                 headers: { "X-Api-Key": apiKey },
                 body: formData
             });
-
-            const totalPermitido = response.headers.get("X-Credits-Limit");
-            const usadoNoMes = response.headers.get("X-Credits-Usage");
-            if (totalPermitido && usadoNoMes) {
-                const restante = parseInt(totalPermitido) - parseInt(usadoNoMes);
-                saldoTxt.innerText = `⚠️ Saldo API: ${restante} fotos restantes`;
-            }
 
             if (response.ok) {
                 const resultBlob = await response.blob();
@@ -159,10 +170,8 @@
         const cGrade = document.getElementById("canvas-grade");
         const ctxG = cGrade.getContext("2d");
         const fotoW = 354, fotoH = 472, gap = 12;
-
         cGrade.width = (fotoW * 6) + (gap * 5) + 40;
         cGrade.height = fotoH + 40;
-
         ctxG.fillStyle = "white";
         ctxG.fillRect(0, 0, cGrade.width, cGrade.height);
 
@@ -173,23 +182,16 @@
             ctxG.strokeStyle = "#ddd";
             ctxG.strokeRect(x, y, fotoW, fotoH);
         }
-
         document.getElementById("preview-final").style.display = "block";
         document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
     }
 
     function baixarPDF() {
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: "p",
-            unit: "cm",
-            format: "a4"
-        });
-
+        const pdf = new jsPDF({ orientation: "p", unit: "cm", format: "a4" });
         const larguraFotoCm = 3, alturaFotoCm = 4, espaco = 0.1, margemSuperior = 0.5;
         const larguraTotal = (larguraFotoCm * 6) + (espaco * 5);
         const margemEsquerda = (21 - larguraTotal) / 2;
-
         const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
         for (let i = 0; i < 6; i++) {
@@ -199,8 +201,7 @@
             pdf.setLineWidth(0.01);
             pdf.rect(pX, margemSuperior, larguraFotoCm, alturaFotoCm);
         }
-
-        pdf.save("fotos_3x4_economico.pdf");
+        pdf.save("fotos_3x4.pdf");
     }
 </script>
 </body>
