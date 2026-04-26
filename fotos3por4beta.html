@@ -28,9 +28,10 @@
     <div class="teclado-info"><b>Setas</b>: Mover | <b>+ / -</b>: Zoom</div>
     
     <input type="file" id="upload" accept="image/*" style="margin-bottom: 15px;">
-    
     <div id="loading">🚀 IA EM AÇÃO... AGUARDE</div>
-    <div id="saldo-api"></div> <div class="canvas-wrapper">
+    <div id="saldo-api"></div>
+
+    <div class="canvas-wrapper">
         <canvas id="canvas" width="354" height="472"></canvas>
         <div class="crop-mask"></div>
     </div>
@@ -54,7 +55,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -84,9 +84,11 @@
         reader.onload = (ev) => {
             imgInput.src = ev.target.result;
             imgInput.onload = () => { 
-                zoom = canvas.width / imgInput.width; 
-                posX = 0; posY = 0;
-                desenhar(); 
+                 zoom = canvas.width / imgInput.width; 
+                 posX = 0; 
+                 // MODIFICAÇÃO AQUI: Imagem começa 60px abaixo do topo
+                 posY = 60; 
+                 desenhar(); 
             };
         };
         reader.readAsDataURL(file);
@@ -125,12 +127,11 @@
                 body: formData
             });
 
-            // Atualiza saldo baseado nos headers da resposta
             const totalPermitido = response.headers.get("X-Credits-Limit");
             const usadoNoMes = response.headers.get("X-Credits-Usage");
             if (totalPermitido && usadoNoMes) {
                 const restante = parseInt(totalPermitido) - parseInt(usadoNoMes);
-                saldoTxt.innerText = `⚠️ Saldo API: ${restante} fotos restantes até a renovação`;
+                saldoTxt.innerText = `⚠️ Saldo API: ${restante} fotos restantes`;
             }
 
             if (response.ok) {
@@ -192,11 +193,11 @@
         const imgData = canvas.toDataURL("image/jpeg", 1.0);
 
         for (let i = 0; i < 6; i++) {
-            let posX = margemEsquerda + (i * (larguraFotoCm + espaco));
-            pdf.addImage(imgData, "JPEG", posX, margemSuperior, larguraFotoCm, alturaFotoCm);
+            let pX = margemEsquerda + (i * (larguraFotoCm + espaco));
+            pdf.addImage(imgData, "JPEG", pX, margemSuperior, larguraFotoCm, alturaFotoCm);
             pdf.setDrawColor(220);
             pdf.setLineWidth(0.01);
-            pdf.rect(posX, margemSuperior, larguraFotoCm, alturaFotoCm);
+            pdf.rect(pX, margemSuperior, larguraFotoCm, alturaFotoCm);
         }
 
         pdf.save("fotos_3x4_economico.pdf");
