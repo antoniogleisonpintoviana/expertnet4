@@ -43,12 +43,13 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            display: none;
+            display: none; /* Só aparece quando o JS carregar a imagem */
         }
         .placeholder-text {
             color: #888;
             font-size: 14px;
             padding: 20px;
+            pointer-events: none;
         }
         .control-group {
             margin-bottom: 15px;
@@ -78,7 +79,7 @@
         }
         button:hover { background-color: #000; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-        .loading { display: none; color: #666; font-size: 13px; margin-top: 10px; }
+        .loading { display: none; color: #666; font-size: 13px; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -86,7 +87,7 @@
 <div class="editor-container">
     <h2>Gemini AI Designer</h2>
     
-    <div class="canvas-wrapper" onclick="document.getElementById('imageUpload').click()">
+    <div class="canvas-wrapper" id="dropArea" onclick="document.getElementById('imageUpload').click()">
         <span class="placeholder-text" id="placeholder">Clique para subir a imagem (354x472)</span>
         <img id="imagePreview" src="" alt="Preview">
     </div>
@@ -94,11 +95,11 @@
     <input type="file" id="imageUpload" accept="image/*" style="display: none">
 
     <div class="control-group">
-        <textarea id="promptInput" placeholder="Ex: O que está escrito nesta imagem?"></textarea>
+        <textarea id="promptInput" placeholder="Ex: O que está escrito nesta imagem? Descreva as cores principais."></textarea>
     </div>
 
     <button id="btnProcessar">Processar com Gemini</button>
-    <div id="loadingStatus" class="loading">Processando imagem... aguarde.</div>
+    <div id="loadingStatus" class="loading">⚡ Processando com IA... aguarde.</div>
 </div>
 
 <script>
@@ -109,14 +110,18 @@
     const btnProcessar = document.getElementById('btnProcessar');
     const loadingStatus = document.getElementById('loadingStatus');
 
+    // Lógica Corrigida para Carregar Imagem
     imageUpload.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(event) {
+                // Garantir que a imagem seja carregada antes de exibir
+                imagePreview.onload = function() {
+                    imagePreview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
                 imagePreview.src = event.target.result;
-                imagePreview.style.display = 'block';
-                placeholder.style.display = 'none';
             }
             reader.readAsDataURL(file);
         }
@@ -125,18 +130,19 @@
     btnProcessar.addEventListener('click', async () => {
         const prompt = document.getElementById('promptInput').value;
         
-        if (!imagePreview.src || imagePreview.src === "") {
-            alert("Selecione uma imagem primeiro!");
+        if (!imagePreview.src || imagePreview.src === "" || imagePreview.src === window.location.href) {
+            alert("Por favor, selecione uma imagem primeiro!");
             return;
         }
         if (!prompt) {
-            alert("Digite um comando para a IA.");
+            alert("Digite um comando ou pergunta para a IA.");
             return;
         }
 
         loadingStatus.style.display = 'block';
         btnProcessar.disabled = true;
 
+        // Extração do Base64
         const base64Image = imagePreview.src.split(',')[1];
 
         const payload = {
@@ -149,4 +155,35 @@
         };
 
         try {
-            // URL ATUALIZADA para evitar o erro 404
+            // URL com o sufixo -latest para garantir que o modelo seja encontrado
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                console.error("Erro da API:", data.error);
+                alert("Erro: " + data.error.message);
+            } else if (data.candidates && data.candidates[0]) {
+                const textResponse = data.candidates[0].content.parts[0].text;
+                // Exibe o resultado de forma limpa
+                alert("Resposta do Gemini:\n\n" + textResponse);
+            } else {
+                alert("Não foi possível obter uma resposta. Veja o console.");
+                console.log("Retorno completo:", data);
+            }
+
+        } catch (error) {
+            console.error("Erro no Fetch:", error);
+            alert("Erro de conexão. Verifique a internet da gráfica.");
+        } finally {
+            loadingStatus.style.display = 'none';
+            btnProcessar.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
