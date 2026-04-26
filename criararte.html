@@ -128,6 +128,7 @@
     <div id="resultArea"></div>
 </div>
 
+
 <script>
     const API_KEY = "AIzaSyDJIQdrha8Pi8T-iB0yDe-3yST7oBujKco"; 
     
@@ -139,7 +140,7 @@
     const loadingStatus = document.getElementById('loadingStatus');
     const resultArea = document.getElementById('resultArea');
 
-    // Carregamento da imagem
+    // Carregar imagem no navegador
     imageUpload.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -155,7 +156,7 @@
         }
     });
 
-    // Função de copiar
+    // Copiar resultado
     btnCopiar.addEventListener('click', () => {
         navigator.clipboard.writeText(resultArea.innerText).then(() => {
             const originalText = btnCopiar.innerText;
@@ -164,67 +165,55 @@
         });
     });
 
+    // A mágica acontece aqui
     btnProcessar.addEventListener('click', async () => {
         const prompt = document.getElementById('promptInput').value;
         
-        if (!imagePreview.src || imagePreview.src === "" || imagePreview.src.includes('window.location.href')) {
-            alert("Por favor, selecione uma imagem primeiro!");
-            return;
-        }
-        if (!prompt.trim()) {
-            alert("Digite um comando para a IA.");
+        if (!imagePreview.src || imagePreview.src === "") {
+            alert("Selecione uma imagem primeiro!");
             return;
         }
 
         loadingStatus.style.display = 'block';
         btnProcessar.disabled = true;
-        resultArea.style.display = 'none';
-        btnCopiar.style.display = 'none';
 
         try {
-            // Limpa o base64 e pega o MIME type
-            const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
-            const base64Image = imagePreview.src.split(',')[1];
-
-            // Montagem do objeto seguindo estritamente a documentação v1
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: prompt },
-                        { 
-                            inline_data: { 
-                                mime_type: mimeType, 
-                                data: base64Image 
-                            } 
-                        }
-                    ]
-                }]
-            };
+            // AJUSTE CRÍTICO: Limpando os dados da imagem
+            const parts = imagePreview.src.split(',');
+            const mimeType = parts[0].match(/:(.*?);/)[1]; // Pega 'image/jpeg'
+            const base64Data = parts[1]; // Pega só o código da imagem, sem o cabeçalho
 
             const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inline_data: { mime_type: mimeType, data: base64Data } }
+                        ]
+                    }]
+                })
             });
 
             const data = await response.json();
 
             if (data.error) {
                 throw new Error(data.error.message);
-            } else if (data.candidates && data.candidates[0]) {
+            }
+
+            if (data.candidates && data.candidates[0]) {
                 const textResponse = data.candidates[0].content.parts[0].text;
                 resultArea.innerText = textResponse;
                 resultArea.style.display = 'block';
                 btnCopiar.style.display = 'block';
-            } else {
-                alert("Ocorreu um erro desconhecido na resposta da IA.");
             }
 
         } catch (error) {
             console.error("Erro detalhado:", error);
-            alert("Erro na API: " + error.message);
+            alert("Erro: " + error.message);
         } finally {
             loadingStatus.style.display = 'none';
             btnProcessar.disabled = false;
