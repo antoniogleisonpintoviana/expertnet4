@@ -165,35 +165,71 @@
         });
     });
 
-   btnProcessar.addEventListener('click', async () => {
-    // ... (suas verificações de imagem e prompt)
+  btnProcessar.addEventListener('click', async () => {
+    const prompt = document.getElementById('promptInput').value;
+    
+    // 1. Verificações de segurança
+    if (!imagePreview.src || imagePreview.src === "" || imagePreview.src.includes('window.location.href')) {
+        alert("Por favor, selecione uma imagem primeiro!");
+        return;
+    }
+    if (!prompt.trim()) {
+        alert("Digite um comando para a IA.");
+        return;
+    }
 
-    const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
-    const base64Image = imagePreview.src.split(',')[1];
-
-    // URL ATUALIZADA (v1 em vez de v1beta)
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    loadingStatus.style.display = 'block';
+    btnProcessar.disabled = true;
+    resultArea.style.display = 'none';
 
     try {
-       const response = await fetch(url, {
+        // 2. Extração correta do MIME Type e do Base64
+        // Isso garante que pegamos 'image/jpeg' ou 'image/png' puro
+        const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
+        const base64Image = imagePreview.src.split(',')[1];
+
+        // 3. Montagem do corpo da requisição (A parte que estava dando erro)
+        const conteudo = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { 
+                        inline_data: { 
+                            mime_type: mimeType, 
+                            data: base64Image 
+                        } 
+                    }
+                ]
+            }]
+        };
+
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { 
-                            text: prompt 
-                        },
-                        { 
-                            inline_data: { 
-                                mime_type: mimeType, 
-                                data: base64Image 
-                            } 
-                        }
-                    ]
-                }]
-            })
+            body: JSON.stringify(conteudo)
         });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error.message);
+        } else if (data.candidates && data.candidates[0]) {
+            const textResponse = data.candidates[0].content.parts[0].text;
+            resultArea.innerText = textResponse;
+            resultArea.style.display = 'block';
+            if(btnCopiar) btnCopiar.style.display = 'block';
+        }
+
+    } catch (error) {
+        console.error("Erro detalhado:", error);
+        alert("Erro na API: " + error.message);
+    } finally {
+        loadingStatus.style.display = 'none';
+        btnProcessar.disabled = false;
+    }
+});
 </script>
 </body>
 </html>
