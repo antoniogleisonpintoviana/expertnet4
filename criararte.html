@@ -183,6 +183,30 @@
     resultArea.style.display = 'none';
 
     try {
+        // ... dentro do seu try ...
+
+const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
+const base64Image = imagePreview.src.split(',')[1];
+
+const payload = {
+    contents: [{
+        parts: [
+            { text: prompt }, // Parte 0: Texto
+            { 
+                inline_data: { // Parte 1: Imagem
+                    mime_type: mimeType, 
+                    data: base64Image 
+                } 
+            }
+        ]
+    }]
+};
+
+const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+});
         // 2. Extração correta do MIME Type e do Base64
         // Isso garante que pegamos 'image/jpeg' ou 'image/png' puro
         const mimeType = imagePreview.src.match(/data:(.*?);base64/)[1];
