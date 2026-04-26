@@ -140,7 +140,6 @@
     const loadingStatus = document.getElementById('loadingStatus');
     const resultArea = document.getElementById('resultArea');
 
-    // Carregar imagem no navegador
     imageUpload.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -156,7 +155,6 @@
         }
     });
 
-    // Copiar resultado
     btnCopiar.addEventListener('click', () => {
         navigator.clipboard.writeText(resultArea.innerText).then(() => {
             const originalText = btnCopiar.innerText;
@@ -165,7 +163,6 @@
         });
     });
 
-    // A mágica acontece aqui
     btnProcessar.addEventListener('click', async () => {
         const prompt = document.getElementById('promptInput').value;
         
@@ -182,8 +179,8 @@
             const mimeType = parts[0].match(/:(.*?);/)[1];
             const base64Data = parts[1];
 
-            // URL REVISADA: Usando v1beta e o nome completo do modelo
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+            // URL ESTABILIZADA
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -201,8 +198,8 @@
             const data = await response.json();
 
             if (data.error) {
-                // Se der erro de 404 de novo, ele vai te avisar exatamente o que o Google disse
-                throw new Error(data.error.message);
+                // Se der erro, vamos mostrar o código do erro para saber se é Permissão ou Modelo
+                throw new Error(`[${data.error.code}] ${data.error.message}`);
             }
 
             if (data.candidates && data.candidates[0]) {
@@ -214,8 +211,7 @@
 
         } catch (error) {
             console.error("Erro detalhado:", error);
-            // Mensagem amigável para o ExpertNet
-            alert("Erro na conexão: " + error.message);
+            alert("ExpertNet Info: " + error.message);
         } finally {
             loadingStatus.style.display = 'none';
             btnProcessar.disabled = false;
