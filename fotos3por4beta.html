@@ -180,19 +180,31 @@
         document.getElementById("preview-final").scrollIntoView({ behavior: 'smooth' });
     }
 
-    function baixarPDF() {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: "p", unit: "cm", format: "a4" });
-        const larguraFotoCm = 3, alturaFotoCm = 4, espaco = 0.1, margemSuperior = 0.5;
-        const larguraTotal = (larguraFotoCm * 6) + (espaco * 5);
-        const margemEsquerda = (21 - larguraTotal) / 2;
-        const imgData = canvas.toDataURL("image/jpeg", 1.0);
-        for (let i = 0; i < 6; i++) {
-            let pX = margemEsquerda + (i * (larguraFotoCm + espaco));
-            pdf.addImage(imgData, "JPEG", pX, margemSuperior, larguraFotoCm, alturaFotoCm);
-        }
-        pdf.save("fotos_3x4_impressao.pdf");
+   function baixarPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: "p", unit: "cm", format: "a4" });
+    const larguraFotoCm = 3, alturaFotoCm = 4, espaco = 0.1, margemSuperior = 0.5;
+    const larguraTotal = (larguraFotoCm * 6) + (espaco * 5);
+    const margemEsquerda = (21 - larguraTotal) / 2;
+    const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+    for (let i = 0; i < 6; i++) {
+        let pX = margemEsquerda + (i * (larguraFotoCm + espaco));
+
+        // 1. Desenha a foto
+        pdf.addImage(imgData, "JPEG", pX, margemSuperior, larguraFotoCm, alturaFotoCm);
+
+        // 2. Configura a cor da borda (0 = preto) e a espessura da linha
+        pdf.setDrawColor(0); 
+        pdf.setLineWidth(0.01); // Espessura bem fina em cm
+
+        // 3. Desenha o retângulo ao redor da foto (mesmas coordenadas e tamanho)
+        // O parâmetro 'S' significa "Stroke" (apenas o contorno)
+        pdf.rect(pX, margemSuperior, larguraFotoCm, alturaFotoCm, 'S');
     }
+
+    pdf.save("fotos_3x4_impressao.pdf");
+}
 </script>
 </body>
 </html>
